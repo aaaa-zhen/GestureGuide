@@ -32,6 +32,15 @@
   opacity: 0.8;
 }
 
+/* Touch vs desktop hint switching */
+.hint-touch { display: none; }
+.hint-desktop { display: inline; }
+
+@media (pointer: coarse) {
+  .hint-touch { display: inline; }
+  .hint-desktop { display: none; }
+}
+
 .demo-reset {
   position: absolute;
   bottom: 8px;

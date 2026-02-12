@@ -86,6 +86,7 @@ p em {
 :lang(zh) .part-intro,
 :lang(zh) .term-box {
   font-family: var(--font-serif-zh);
+  letter-spacing: 0.03em;
 }
 
 /* ── Links ── */

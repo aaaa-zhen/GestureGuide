@@ -48,7 +48,7 @@ h1, h2, h3, h4, p, li, td, th, code, pre,
 
   /* Fonts */
   --font-serif: "Source Serif 4", Georgia, "Times New Roman", serif;
-  --font-serif-zh: "Noto Serif SC", "Source Serif 4", "Songti SC", STSong, "SimSun", serif;
+  --font-serif-zh: "Noto Sans SC", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
   --font-mono: "JetBrains Mono", Menlo, Consolas, monospace;
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 
