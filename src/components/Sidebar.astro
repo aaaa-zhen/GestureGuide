@@ -1,0 +1,28 @@
+---
+import { getChapters, type SiteLang } from '../data/chapters'
+
+const currentPath = Astro.url.pathname
+const { lang = 'en' } = Astro.props as { lang?: SiteLang }
+const chapters = getChapters(lang)
+const homeHref = lang === 'zh' ? '/zh/' : '/'
+const siteTitle = lang === 'zh' ? '手势指南' : 'Gesture Guide'
+
+function isActiveChapter(chapterHref: string): boolean {
+  const normCurrent = currentPath.replace(/\/$/, '') || '/'
+  const normChapter = chapterHref.replace(/\/$/, '') || '/'
+  return normCurrent === normChapter
+}
+---
+
+<a href={homeHref} class="sidebar-title">{siteTitle}</a>
+
+{chapters.map(ch => (
+  <div class={`sidebar-group${isActiveChapter(ch.href) ? ' active-chapter' : ''}`}>
+    <a href={ch.href} class="sidebar-group-label">{ch.num}. {ch.label}</a>
+    <ul>
+      {ch.sections.map(sec => (
+        <li><a href={sec.href} data-section={sec.id}>{sec.label}</a></li>
+      ))}
+    </ul>
+  </div>
+))}

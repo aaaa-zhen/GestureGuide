@@ -1,0 +1,801 @@
+/* ── Demo Containers ── */
+
+.demo {
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--demo-border, #d0d0d6);
+  border-radius: 8px;
+  margin: var(--space-md) 0 var(--space-lg);
+  overflow: hidden;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.demo-grid {
+  background-image:
+    linear-gradient(rgba(0, 0, 0, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.05) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* ── Hint text (bottom-right) ── */
+.demo-hint {
+  position: absolute;
+  bottom: 10px;
+  right: 14px;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  color: var(--fg-secondary, #4a4a5a);
+  pointer-events: none;
+  letter-spacing: 0.02em;
+  opacity: 0.8;
+}
+
+.demo-reset {
+  position: absolute;
+  bottom: 8px;
+  left: 14px;
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.04em;
+  color: var(--fg-muted);
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 2px 8px;
+  cursor: pointer;
+  z-index: 2;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.demo-reset:hover {
+  color: var(--fg);
+  border-color: var(--fg-muted);
+}
+
+/* Per-demo touch-action policies */
+#demo-drag-direct,
+#demo-drag-spring,
+#demo-axislock,
+#demo-fling,
+#demo-momentum,
+#demo-spring,
+#demo-snap,
+#demo-rubber,
+#demo-overscroll,
+#demo-reorder,
+#demo-state-machine,
+#demo-decay,
+#demo-swipe-gesture,
+#demo-pointer-log,
+#demo-arena,
+#demo-touchdown,
+#demo-rubber-slider {
+  touch-action: none;
+}
+
+#demo-swipe,
+#demo-swipe-actions,
+#demo-carousel {
+  touch-action: pan-y;
+}
+
+#demo-pull-refresh {
+  touch-action: pan-x;
+}
+
+/* ── Readout panel (top-left) ── */
+.demo-readout {
+  position: absolute;
+  top: 12px;
+  left: 16px;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--fg-muted);
+  pointer-events: none;
+  line-height: 1.6;
+  white-space: pre;
+}
+
+.demo-readout .val {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* ── Demo with draggable box ── */
+.demo-box {
+  height: 220px;
+  cursor: grab;
+}
+
+.demo-box.dragging,
+.demo.dragging {
+  cursor: grabbing;
+}
+
+.demo .box {
+  position: absolute;
+  width: 64px;
+  height: 64px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: #fff;
+  will-change: transform;
+  transition: background 0.2s, box-shadow 0.15s;
+}
+
+.demo.dragging .box {
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+}
+
+/* Box color variants */
+.box-blue { background: var(--demo-blue); box-shadow: 0 3px 12px rgba(43, 92, 230, 0.3); }
+.box-orange { background: var(--demo-orange); box-shadow: 0 3px 12px rgba(212, 130, 10, 0.3); }
+.box-purple { background: var(--demo-purple); box-shadow: 0 3px 12px rgba(112, 64, 176, 0.3); }
+.box-green { background: var(--demo-green); box-shadow: 0 3px 12px rgba(39, 174, 96, 0.3); }
+.box-red { background: var(--demo-red); box-shadow: 0 3px 12px rgba(231, 76, 60, 0.3); }
+
+/* ── State badges ── */
+.state-badge {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--fg-muted);
+  transition: all 0.15s;
+}
+
+.state-badge.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-light);
+}
+
+.state-badges {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin: var(--space-md) 0;
+}
+
+/* ── Controls bar below demo ── */
+.demo-controls {
+  display: flex;
+  gap: 20px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 0 0 8px 8px;
+  margin-top: -1px;
+  margin-bottom: var(--space-lg);
+  font-family: var(--font-mono);
+}
+
+.demo-controls label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.65rem;
+  color: var(--fg-secondary);
+}
+
+.demo-controls input[type="range"],
+.diagram-controls input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 120px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border);
+  outline: none;
+  cursor: pointer;
+}
+
+.demo-controls input[type="range"]::-webkit-slider-thumb,
+.diagram-controls input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  cursor: grab;
+}
+
+.demo-controls input[type="range"]::-webkit-slider-thumb:active,
+.diagram-controls input[type="range"]::-webkit-slider-thumb:active {
+  cursor: grabbing;
+  box-shadow: 0 0 0 4px var(--accent-light), 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.demo-controls input[type="range"]::-moz-range-thumb,
+.diagram-controls input[type="range"]::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  cursor: grab;
+}
+
+.demo-controls input[type="range"]::-moz-range-track,
+.diagram-controls input[type="range"]::-moz-range-track {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border);
+}
+
+.demo-controls .ctrl-value {
+  color: var(--accent);
+  min-width: 36px;
+  font-size: 0.65rem;
+  font-weight: 600;
+}
+
+/* ── Progress ring (for long press demo) ── */
+.progress-ring {
+  position: absolute;
+  pointer-events: none;
+}
+
+.progress-ring circle {
+  fill: none;
+  stroke-width: 3;
+  stroke-linecap: round;
+  transform: rotate(-90deg);
+  transform-origin: center;
+}
+
+.progress-ring .track {
+  stroke: rgba(0, 0, 0, 0.08);
+}
+
+.progress-ring .fill {
+  stroke: var(--accent);
+  transition: stroke-dashoffset 0.05s linear;
+}
+
+/* ── Number wheel (momentum / rubber band demos) ── */
+.lp-shell {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 80px;
+  height: 200px;
+  overflow: hidden;
+  border-radius: 8px;
+  border: 1px solid var(--fg-muted);
+  background: var(--bg);
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.06);
+  transition: border-color 0.15s;
+}
+
+.lp-track {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.lp-item {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 40px;
+  line-height: 40px;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--fg);
+  will-change: transform, opacity;
+}
+
+/* ── Velocity dot (horizontal drag) ── */
+.velocity-dot {
+  position: absolute;
+  top: 50%;
+  width: 44px;
+  height: 44px;
+  margin-top: -22px;
+  border-radius: 50%;
+  background: var(--demo-blue);
+  box-shadow: 0 3px 12px rgba(43, 92, 230, 0.3);
+  cursor: grab;
+  display: grid;
+  place-items: center;
+}
+
+.velocity-dot.dragging {
+  cursor: grabbing;
+  box-shadow: 0 6px 20px rgba(43, 92, 230, 0.35);
+}
+
+/* ── Swipe card ── */
+.swipe-card {
+  position: absolute;
+  width: 160px;
+  height: 100px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--fg-muted);
+  cursor: grab;
+  will-change: transform, opacity;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.swipe-result {
+  position: absolute;
+  bottom: 16px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--accent);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.swipe-result.show {
+  opacity: 1;
+}
+
+/* ── Swipe actions (reveal behind) ── */
+.swipe-actions-track {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+}
+
+.swipe-actions-item {
+  position: relative;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  padding: 14px 18px;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--fg-secondary);
+  z-index: 2;
+  cursor: grab;
+}
+
+.swipe-actions-behind {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  z-index: 1;
+}
+
+.swipe-actions-behind button {
+  width: 60px;
+  border: none;
+  color: #fff;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.swipe-actions-behind .action-archive {
+  background: var(--demo-blue);
+}
+
+.swipe-actions-behind .action-delete {
+  background: var(--demo-red);
+}
+
+/* ── Pull to refresh ── */
+.pull-refresh-area {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+}
+
+.pull-refresh-indicator {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  right: 0;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--accent);
+}
+
+.pull-refresh-list {
+  height: 100%;
+  overflow-y: auto;
+}
+
+.pull-refresh-list-item {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--fg-secondary);
+}
+
+/* ── Carousel ── */
+.carousel-viewport {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.carousel-strip {
+  display: flex;
+  height: 100%;
+  will-change: transform;
+}
+
+.carousel-page {
+  flex: 0 0 100%;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-mono);
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.carousel-dots {
+  position: absolute;
+  bottom: 12px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.carousel-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.4);
+  transition: background 0.2s;
+}
+
+.carousel-dot.active {
+  background: #fff;
+}
+
+/* ── Reorder list ── */
+.reorder-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  position: relative;
+}
+
+.reorder-item {
+  position: relative;
+  padding: 12px 18px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-bottom: none;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--fg-secondary);
+  cursor: grab;
+  transition: transform 0.2s, box-shadow 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.reorder-item:last-child {
+  border-bottom: 1px solid var(--border);
+}
+
+.reorder-item.dragging {
+  z-index: 10;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+  cursor: grabbing;
+  background: var(--accent-light);
+  border-color: var(--accent);
+}
+
+.reorder-item.kbd-selected {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.reorder-handle {
+  color: var(--fg-muted);
+  font-size: 0.9rem;
+  flex-shrink: 0;
+}
+
+/* ── Nested scroll demo ── */
+.nested-outer {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.nested-inner {
+  display: flex;
+  gap: 8px;
+  padding: 12px;
+  overflow-x: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.nested-inner-item {
+  flex: 0 0 100px;
+  height: 60px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: #fff;
+}
+
+.nested-section {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--fg-secondary);
+}
+
+/* ── FPS monitor ── */
+.fps-bar-container {
+  position: absolute;
+  bottom: 12px;
+  left: 16px;
+  right: 16px;
+  height: 40px;
+  display: flex;
+  align-items: flex-end;
+  gap: 1px;
+}
+
+.fps-bar {
+  flex: 1;
+  min-width: 2px;
+  background: var(--demo-green);
+  transition: height 0.05s;
+}
+
+.fps-bar.slow {
+  background: var(--demo-orange);
+}
+
+.fps-bar.jank {
+  background: var(--demo-red);
+}
+
+/* ── Axis lock indicator ── */
+.axis-indicator {
+  position: absolute;
+  top: 12px;
+  right: 16px;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+  pointer-events: none;
+}
+
+.axis-indicator.locked-x {
+  color: var(--demo-blue);
+}
+
+.axis-indicator.locked-y {
+  color: var(--demo-orange);
+}
+
+/* ── Snap track ── */
+.snap-track {
+  position: absolute;
+  top: 50%;
+  left: 40px;
+  right: 40px;
+  height: 4px;
+  background: var(--fg-muted);
+  opacity: 0.3;
+  border-radius: 2px;
+  transform: translateY(-50%);
+}
+
+.snap-point {
+  position: absolute;
+  top: -6px;
+  width: 4px;
+  height: 16px;
+  background: var(--fg-muted);
+  border-radius: 2px;
+  transform: translateX(-50%);
+}
+
+.snap-dot {
+  position: absolute;
+  top: 50%;
+  width: 32px;
+  height: 32px;
+  margin-top: -16px;
+  border-radius: 50%;
+  background: var(--demo-purple);
+  box-shadow: 0 3px 12px rgba(112, 64, 176, 0.35);
+  cursor: grab;
+  z-index: 2;
+}
+
+.snap-dot.dragging {
+  cursor: grabbing;
+  box-shadow: 0 6px 20px rgba(112, 64, 176, 0.4);
+}
+
+/* ── Velocity bar (momentum demo) ── */
+.vel-bar {
+  position: absolute;
+  right: 60px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 6px;
+  height: 160px;
+  background: var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column-reverse;
+}
+
+.vel-bar-inner {
+  width: 100%;
+  height: 0%;
+  border-radius: 3px;
+  background: var(--demo-blue);
+  transition: background 0.1s;
+}
+
+/* ── Pinch / Zoom demo ── */
+#demo-pinch {
+  touch-action: none;
+}
+
+.pinch-target {
+  position: absolute;
+  width: 140px;
+  height: 140px;
+  border-radius: 16px;
+  will-change: transform;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  cursor: grab;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+.pinch-target.dragging {
+  cursor: grabbing;
+}
+
+.pinch-pattern {
+  width: 100%;
+  height: 100%;
+  background:
+    linear-gradient(135deg, var(--demo-blue) 25%, transparent 25%),
+    linear-gradient(225deg, var(--demo-purple) 25%, transparent 25%),
+    linear-gradient(315deg, var(--demo-orange) 25%, transparent 25%),
+    linear-gradient(45deg, var(--demo-green) 25%, transparent 25%);
+  background-size: 50% 50%;
+  background-position: top left, top right, bottom right, bottom left;
+  border-radius: 16px;
+}
+
+.pinch-ring {
+  position: absolute;
+  border: 2px dashed var(--fg-muted);
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.pinch-ring.visible {
+  opacity: 0.4;
+}
+
+/* ── Decay Prediction demo ── */
+.decay-track {
+  position: absolute;
+  top: 50%;
+  left: 40px;
+  right: 40px;
+  height: 4px;
+  background: var(--fg-muted);
+  opacity: 0.3;
+  border-radius: 2px;
+  transform: translateY(-50%);
+}
+
+.decay-dot {
+  position: absolute;
+  top: 50%;
+  width: 32px;
+  height: 32px;
+  margin-top: -16px;
+  border-radius: 50%;
+  background: var(--demo-blue);
+  box-shadow: 0 3px 12px rgba(43, 92, 230, 0.35);
+  cursor: grab;
+  z-index: 2;
+}
+
+.decay-dot:active {
+  cursor: grabbing;
+}
+
+.decay-ghost {
+  position: absolute;
+  top: 50%;
+  width: 32px;
+  height: 32px;
+  margin-top: -16px;
+  border-radius: 50%;
+  border: 2px dashed var(--demo-orange);
+  background: transparent;
+  opacity: 0;
+  transition: opacity 0.15s;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* ── Swipe direction label ── */
+.swipe-dir-label {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: var(--font-mono);
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--demo-orange);
+  opacity: 0;
+  transition: opacity 0.15s;
+  pointer-events: none;
+}
+
+.swipe-dir-label.show {
+  opacity: 1;
+}

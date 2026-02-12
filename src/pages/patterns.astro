@@ -1,0 +1,130 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro'
+import ChapterNav from '../components/ChapterNav.astro'
+---
+
+<BaseLayout title="Gesture Guide — Interaction Patterns" breadcrumbLabel="3. Interaction Patterns" description="Compound gesture patterns: swipe-to-dismiss, swipe-to-reveal actions, pull-to-refresh, carousel paging, and drag-to-reorder.">
+  <p class="byline">Chapter 3</p>
+  <h1>Interaction Patterns</h1>
+  <p class="lead">
+    Compound gesture behaviors that combine recognition, physics, and layout into
+    reusable patterns. These are the building blocks of gesture-driven interfaces &mdash;
+    swipe-to-dismiss, pull-to-refresh, carousels, and more.
+  </p>
+
+  <div class="section-sep">&middot;&middot;&middot;&middot;&middot;</div>
+
+  <!-- ════ Pull to Refresh ════ -->
+  <h2 id="sec-pull-refresh">Pull to Refresh</h2>
+  <p>
+    Pull a scrollable list downward from the top. The pull creates an overscroll region with
+    <strong>rubber band resistance</strong> &mdash; the further you pull, the harder it gets.
+    Once the pull passes a threshold (~60px of rubber-mapped distance), a refresh indicator
+    appears. Releasing above the threshold triggers the refresh; releasing below it snaps
+    the list back immediately.
+  </p>
+  <p>
+    The rubber band mapping is critical for feel. Without it, the list would move 1:1 with
+    your finger during overscroll, which feels wrong because there's no content to scroll
+    into. The increasing resistance communicates that you're doing something <em>different</em>
+    from normal scrolling.
+  </p>
+
+  <div class="diagram" id="dia-pull-refresh">
+    <div class="diagram-caption">Pull to refresh: rubber band overscroll with threshold activation</div>
+  </div>
+
+  <span class="fig-label">fig-400 &middot; pull to refresh</span>
+  <div class="demo demo-grid" id="demo-pull-refresh" style="height:280px;" tabindex="0" aria-label="Pull to refresh demo — pull the list down to trigger refresh">
+    <div class="demo-readout" id="ptr-readout" aria-live="polite" role="status"></div>
+    <div class="demo-hint" id="hint-ptr">pull down from top</div>
+  </div>
+
+  <div class="section-sep">&middot;&middot;&middot;&middot;&middot;</div>
+
+  <!-- ════ Carousel ════ -->
+  <h2 id="sec-carousel">Carousel</h2>
+  <p>
+    A horizontal strip of full-width pages inside a viewport. Drag horizontally, and on
+    release the strip snaps to the nearest page boundary. This is the gesture behind photo
+    galleries, onboarding flows, and story carousels.
+  </p>
+  <p>
+    The snap logic is velocity-assisted: the system predicts where the strip would end up
+    based on release velocity, then rounds to the nearest page. To prevent skipping multiple
+    pages on a single flick, the target is clamped to &plusmn;1 page from the current page.
+    At the edges, a rubber band effect communicates the boundary.
+  </p>
+
+  <div class="diagram" id="dia-carousel">
+    <div class="diagram-caption">Carousel: horizontal pages with snap points and velocity-assisted paging</div>
+  </div>
+
+  <span class="fig-label">fig-401 &middot; page carousel</span>
+  <div class="demo demo-grid" id="demo-carousel" style="height:240px;" tabindex="0" aria-label="Carousel demo — drag left and right to switch pages">
+    <div class="demo-readout" id="carousel-readout" aria-live="polite" role="status"></div>
+    <div class="demo-hint" id="hint-carousel">drag left or right</div>
+  </div>
+
+  <div class="section-sep">&middot;&middot;&middot;&middot;&middot;</div>
+
+  <!-- ════ Draggable Grid ════ -->
+  <h2 id="sec-reorder">Draggable Grid</h2>
+  <p>
+    A 3&times;3 grid of tiles that can be freely rearranged by dragging. Grab any tile
+    and move it over another &mdash; the displaced tile springs into the vacated cell.
+    The swap is triggered by proximity to the nearest grid cell center, so the interaction
+    feels predictable and forgiving.
+  </p>
+  <p>
+    Each tile has its own <strong>x, y, and scale springs</strong>. The dragged tile
+    scales up slightly and gains elevation (shadow) to communicate lift. On release, the
+    tile inherits drag velocity and bounces into its final grid position.
+  </p>
+
+  <div class="diagram" id="dia-reorder">
+    <div class="diagram-caption">Draggable grid: drag to swap, displaced tiles spring into vacated cells</div>
+  </div>
+
+  <span class="fig-label">fig-402 &middot; draggable grid</span>
+  <div class="demo demo-grid" id="demo-reorder" style="height:280px;" tabindex="0" aria-label="Draggable grid demo — drag tiles to rearrange">
+    <div class="demo-readout" id="reorder-readout" aria-live="polite" role="status"></div>
+    <div class="demo-hint" id="hint-reorder">drag to rearrange</div>
+  </div>
+
+  <div class="section-sep">&middot;&middot;&middot;&middot;&middot;</div>
+
+  <!-- ════ Rubber Band Slider ════ -->
+  <h2 id="sec-rubber-slider">Rubber Band Slider</h2>
+  <p>
+    A horizontal slider where dragging past the left or right edge <strong>deforms the entire
+    control</strong> &mdash; stretching in the drag direction and squishing perpendicular to it,
+    like a physical rubber object being pulled beyond its limits.
+  </p>
+  <p>
+    The deformation uses a <strong>square root curve</strong> so the stretch grows quickly at
+    first then tapers off, matching the feel of real elastic material. On release, a spring
+    snaps the shape back to its resting form. This communicates &ldquo;you&rsquo;ve hit the
+    boundary&rdquo; through <em>shape</em> rather than just resistance &mdash; a more visceral,
+    playful feedback channel.
+  </p>
+
+  <span class="fig-label">fig-403 &middot; rubber band slider</span>
+  <div class="demo demo-grid" id="demo-rubber-slider" style="height:280px;" tabindex="0" aria-label="Rubber band slider — drag past edges to see elastic deformation">
+    <div class="demo-readout" id="rubber-slider-readout" aria-live="polite" role="status"></div>
+    <div class="demo-hint" id="hint-rubber-slider">drag past left or right</div>
+  </div>
+
+  <ChapterNav chapterId="ch3" />
+
+  <script>
+    import '../demos/pull-refresh.js'
+    import '../demos/carousel.js'
+    import '../demos/reorder-list.js'
+    import '../demos/rubber-slider.js'
+    import { drawPullRefreshDiagram, drawCarouselDiagram, drawReorderDiagram } from '../demos/ch4-diagrams.js'
+    drawPullRefreshDiagram('dia-pull-refresh')
+    drawCarouselDiagram('dia-carousel')
+    drawReorderDiagram('dia-reorder')
+  </script>
+</BaseLayout>

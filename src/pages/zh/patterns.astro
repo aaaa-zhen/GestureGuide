@@ -1,0 +1,124 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro'
+import ChapterNav from '../../components/ChapterNav.astro'
+---
+
+<BaseLayout lang="zh" title="Gesture Guide — 交互模式" breadcrumbLabel="3. 交互模式" description="复合手势模式：swipe-to-dismiss、操作露出、下拉刷新、轮播分页和拖拽重排。">
+  <p class="byline">第 3 章</p>
+  <h1>交互模式</h1>
+  <p class="lead">
+    当手势识别、物理系统和布局逻辑交织在一起，就构成了可复用的交互模式。
+    它们是手势驱动界面的积木单元 &mdash; swipe-to-dismiss、
+    pull-to-refresh、carousel 都属于这一层。
+  </p>
+
+  <div class="section-sep">&middot;&middot;&middot;&middot;&middot;</div>
+
+  <!-- ════ Pull to Refresh ════ -->
+  <h2 id="sec-pull-refresh">Pull to Refresh（下拉刷新）</h2>
+  <p>
+    在可滚动列表顶部继续向下拉，便会进入 overscroll 区域，
+    并带上<strong>橡皮筋阻力</strong> &mdash; 拉得越远，阻力越大。
+    当拉动超过阈值（约 60px 的 rubber-mapped 位移），刷新指示浮现。
+    在阈值之上释放则触发刷新；阈值之下释放则即刻回弹。
+  </p>
+  <p>
+    橡皮筋映射是手感的关键所在。如果越界后仍然 1:1 跟手，会显得不对劲 &mdash;
+    因为那里并没有真实内容可供继续滚动。递增的阻力在传达：
+    你正在做的，是一个与普通滚动<strong>截然不同</strong>的动作。
+  </p>
+
+  <div class="diagram" id="dia-pull-refresh">
+    <div class="diagram-caption">Pull to refresh：橡皮筋超滚动 + 阈值触发</div>
+  </div>
+
+  <span class="fig-label">fig-400 &middot; pull to refresh</span>
+  <div class="demo demo-grid" id="demo-pull-refresh" style="height:280px;" tabindex="0" aria-label="Pull to refresh demo — 向下拉动列表并释放触发刷新">
+    <div class="demo-readout" id="ptr-readout" aria-live="polite" role="status"></div>
+    <div class="demo-hint" id="hint-ptr">从顶部向下拉</div>
+  </div>
+
+  <div class="section-sep">&middot;&middot;&middot;&middot;&middot;</div>
+
+  <!-- ════ Carousel ════ -->
+  <h2 id="sec-carousel">Carousel（轮播）</h2>
+  <p>
+    在视口中横向排列整页条带。水平拖动后释放，条带自动吸附到最近的页边界。
+    图集、引导页、故事流 &mdash; 这是移动端最常见的手势模式之一。
+  </p>
+  <p>
+    吸附逻辑通常由速度辅助：系统根据释放速度预测自然停点，
+    再舍入到最近页。为防止一次 flick 跨过太多页，目标通常被限制在
+    当前页 &plusmn;1 范围内。边缘处再用橡皮筋反馈边界感。
+  </p>
+
+  <div class="diagram" id="dia-carousel">
+    <div class="diagram-caption">Carousel：水平分页 + 吸附点 + 速度辅助翻页</div>
+  </div>
+
+  <span class="fig-label">fig-401 &middot; page carousel</span>
+  <div class="demo demo-grid" id="demo-carousel" style="height:240px;" tabindex="0" aria-label="Carousel demo — 左右拖动切换页面">
+    <div class="demo-readout" id="carousel-readout" aria-live="polite" role="status"></div>
+    <div class="demo-hint" id="hint-carousel">左右拖动</div>
+  </div>
+
+  <div class="section-sep">&middot;&middot;&middot;&middot;&middot;</div>
+
+  <!-- ════ Draggable Grid ════ -->
+  <h2 id="sec-reorder">Draggable Grid（可拖拽网格）</h2>
+  <p>
+    一个 3&times;3 网格，元素可自由重排。抓起任意方块拖到另一个方块上方，
+    被挤占的方块便会经由弹簧过渡到空位。交换的触发条件通常是与最近网格中心的接近程度 &mdash;
+    这让交互更可预测，也更宽容。
+  </p>
+  <p>
+    每个格子一般各自维护 <strong>x、y 和 scale 弹簧</strong>。
+    被拖拽项会轻微放大并抬升（阴影增强）以表达"被提起"的状态；释放后继承拖拽速度，
+    弹性落入最终的网格位置。
+  </p>
+
+  <div class="diagram" id="dia-reorder">
+    <div class="diagram-caption">Draggable grid：拖动交换，受影响项弹簧补位</div>
+  </div>
+
+  <span class="fig-label">fig-402 &middot; draggable grid</span>
+  <div class="demo demo-grid" id="demo-reorder" style="height:280px;" tabindex="0" aria-label="Draggable grid demo — 拖拽方块重排">
+    <div class="demo-readout" id="reorder-readout" aria-live="polite" role="status"></div>
+    <div class="demo-hint" id="hint-reorder">拖动以重排</div>
+  </div>
+
+  <div class="section-sep">&middot;&middot;&middot;&middot;&middot;</div>
+
+  <!-- ════ Rubber Band Slider ════ -->
+  <h2 id="sec-rubber-slider">Rubber Band Slider（橡皮筋滑杆）</h2>
+  <p>
+    这是一个水平滑杆：当你拖过左右边界，不只是数值被限制 &mdash;
+    <strong>整个控件会发生形变</strong>。在拖拽方向被拉长，在垂直方向被压扁，
+    如同真实橡胶体被拉过了极限。
+  </p>
+  <p>
+    形变通常用<strong>平方根曲线</strong>计算：前段伸长快、后段趋于收敛，
+    更接近真实弹性材料的质感。释放后弹簧将形状拉回静止态。
+    这相当于通过<strong>形状</strong>而不只是阻力来告诉用户"已到边界" &mdash;
+    反馈更直观，也更有趣味。
+  </p>
+
+  <span class="fig-label">fig-403 &middot; rubber band slider</span>
+  <div class="demo demo-grid" id="demo-rubber-slider" style="height:280px;" tabindex="0" aria-label="Rubber band slider — 拖过边界观察弹性形变">
+    <div class="demo-readout" id="rubber-slider-readout" aria-live="polite" role="status"></div>
+    <div class="demo-hint" id="hint-rubber-slider">拖过左右边界</div>
+  </div>
+
+  <ChapterNav lang="zh" chapterId="ch3" />
+
+  <script>
+    import '../../demos/pull-refresh.js'
+    import '../../demos/carousel.js'
+    import '../../demos/reorder-list.js'
+    import '../../demos/rubber-slider.js'
+    import { drawPullRefreshDiagram, drawCarouselDiagram, drawReorderDiagram } from '../../demos/ch4-diagrams.js'
+    drawPullRefreshDiagram('dia-pull-refresh')
+    drawCarouselDiagram('dia-carousel')
+    drawReorderDiagram('dia-reorder')
+  </script>
+</BaseLayout>

@@ -1,0 +1,72 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro'
+import ChapterNav from '../components/ChapterNav.astro'
+---
+
+<BaseLayout title="Gesture Guide — Introduction" breadcrumbLabel="Introduction" description="Learn the fundamentals of gesture-driven interfaces: direct manipulation and the feedback loop that makes interaction feel right.">
+  <p class="byline">Interactive Guide for Interaction Designers</p>
+  <h1>What Makes Interaction Feel Right</h1>
+  <p class="lead">
+    Tap. Drag. Fling. Swipe. Every touch interaction on your phone is a gesture &mdash;
+    a pattern the interface recognizes from your finger's movement. This guide breaks down
+    each gesture with interactive demos you can feel directly.
+  </p>
+
+  <div class="section-sep">&middot;&middot;&middot;&middot;&middot;</div>
+
+  <h2 id="sec-direct">Direct manipulation</h2>
+  <p>
+    The most important principle in touch interaction design is <strong>direct manipulation</strong>:
+    the content moves with your finger, one-to-one, with zero perceptible delay. When this works,
+    the screen feels like a physical surface. When there's even 50ms of lag, the illusion breaks &mdash;
+    you're no longer touching the content, you're remote-controlling it.
+  </p>
+  <p>
+    Apple's HI team measured that users can perceive as little as <strong>10ms of input lag</strong>.
+    This is why every gesture in this guide starts with immediate 1:1 tracking during the touch,
+    and only applies physics (springs, momentum, snapping) <em>after</em> the finger lifts.
+  </p>
+
+  <div class="section-sep">&middot;&middot;&middot;&middot;&middot;</div>
+
+  <h2 id="sec-feedback">The feedback loop</h2>
+  <p>
+    Every touch interaction follows a four-phase cycle:
+  </p>
+  <ul class="note-list">
+    <li><strong>Press</strong> &mdash; the finger makes contact. The interface responds instantly with a visual change (highlight, scale, ripple) to confirm it received the touch.</li>
+    <li><strong>Follow</strong> &mdash; if the finger moves, the content follows 1:1. This is the direct manipulation phase. The system is still deciding what gesture this will become.</li>
+    <li><strong>Release</strong> &mdash; the finger lifts. The system now knows what happened (tap, fling, swipe) and commits to the appropriate response.</li>
+    <li><strong>Settle</strong> &mdash; physics take over. Content coasts with momentum, springs back to a snap point, bounces off boundaries. This phase communicates the <em>result</em> of the gesture.</li>
+  </ul>
+  <p>
+    When all four phases are present and well-tuned, the interaction feels
+    <strong>continuous and alive</strong>. When any phase is missing &mdash; no press feedback,
+    laggy tracking, abrupt stop after release &mdash; the interaction feels broken.
+  </p>
+
+  <div class="diagram" id="dia-pointer-events">
+    <div class="diagram-caption">The gesture lifecycle: press, follow, release, settle</div>
+  </div>
+
+  <h3>Try it: the feedback loop in action</h3>
+  <p>
+    Touch or click the area below and drag around. Watch the phase indicator change
+    as your interaction moves through all four stages.
+  </p>
+
+  <span class="fig-label">fig-000 &middot; gesture feedback loop</span>
+  <div class="demo demo-grid" id="demo-pointer-log" style="height: 280px; cursor: grab;" tabindex="0" aria-label="Gesture feedback loop demo — touch and drag to see Press, Follow, Release, Settle phases">
+    <canvas id="pointer-trail-canvas" style="position:absolute;inset:0;width:100%;height:100%;"></canvas>
+    <div class="demo-readout" id="pointer-log-readout" aria-live="polite" role="status"></div>
+    <div class="demo-hint" id="hint-pointer">touch &amp; drag</div>
+  </div>
+
+  <ChapterNav chapterId="ch0" />
+
+  <script>
+    import '../demos/pointer-logger.js'
+    import { drawPointerEventModel } from '../demos/diagrams.js'
+    drawPointerEventModel('dia-pointer-events')
+  </script>
+</BaseLayout>

@@ -1,0 +1,39 @@
+---
+import { getChapters } from '../data/chapters'
+import type { SiteLang } from '../data/chapters'
+
+interface Props {
+  lang?: SiteLang
+  chapterId: string
+}
+
+const { lang = 'en', chapterId } = Astro.props as Props
+const isZh = lang === 'zh'
+const chapters = getChapters(lang)
+
+const currentIndex = chapters.findIndex(ch => ch.id === chapterId)
+const prev = currentIndex > 0 ? chapters[currentIndex - 1] : null
+const next = currentIndex < chapters.length - 1 ? chapters[currentIndex + 1] : null
+
+const prevLabel = isZh ? '上一章' : 'Previous'
+const nextLabel = isZh ? '下一章' : 'Next'
+---
+
+<nav class="chapter-nav">
+  {prev ? (
+    <a class="nav-prev" href={prev.href}>
+      <span class="nav-label">{prevLabel}</span>
+      &larr; {prev.num}. {prev.label}
+    </a>
+  ) : (
+    <span></span>
+  )}
+  {next ? (
+    <a class="nav-next" href={next.href}>
+      <span class="nav-label">{nextLabel}</span>
+      {next.num}. {next.label} &rarr;
+    </a>
+  ) : (
+    <span></span>
+  )}
+</nav>

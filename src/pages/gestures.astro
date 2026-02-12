@@ -1,0 +1,373 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro'
+import ChapterNav from '../components/ChapterNav.astro'
+import { GESTURE } from '../engine/render-loop.js'
+
+const SWIPE_DEMO_VELOCITY = 650
+const SWIPE_DEMO_DISTANCE = 60
+const FLING_DEMO_THRESHOLD = 950
+---
+
+<BaseLayout title="Gesture Guide — Gestures" breadcrumbLabel="1. Gestures" description="All touch gesture primitives: tap, double tap, long press, swipe, drag, fling, pinch/zoom, axis locking, velocity tracking, and gesture arbitration.">
+  <p class="byline">Chapter 1</p>
+  <h1>Gestures</h1>
+  <p class="lead">
+    Every touch interaction starts with a gesture &mdash; a specific pattern of finger
+    movement that the system must recognize. Tap, swipe, drag, fling, pinch: each is defined
+    by its own combination of timing, displacement, velocity, and finger count.
+  </p>
+
+  <div class="section-sep">&middot;&middot;&middot;&middot;&middot;</div>
+
+  <!-- ════ Touch Down ════ -->
+  <h2 id="sec-touchdown">Touch Down</h2>
+  <p>
+    Before any gesture is recognized, there's a simpler event: <strong>the finger touches
+    the screen</strong>. This is the starting point for every interaction. The interface should
+    respond instantly &mdash; a scale change, a highlight, a color shift &mdash; to confirm
+    it received the touch.
+  </p>
+  <p>
+    This is not the same as a tap. A tap requires the finger to lift quickly. Touch down
+    is the <em>press</em> phase alone &mdash; immediate, unconditional, with no waiting for
+    the system to decide what gesture will follow. If it turns out to be a drag, the press
+    state transitions smoothly. If it's a tap, the press state resolves on release.
+  </p>
+
+  <span class="fig-label">fig-099 &middot; touch down feedback</span>
+  <div class="demo demo-grid" id="demo-touchdown" style="height:180px; cursor:pointer;" tabindex="0" aria-label="Touch down demo — press anywhere to see ripple feedback, release to see green ripple">
+    <div class="demo-readout" id="td-readout" aria-live="polite" role="status"></div>
+    <div class="demo-hint" id="hint-td">tap anywhere</div>
+  </div>
+
+  <div class="section-sep">&middot;&middot;&middot;&middot;&middot;</div>
+
+  <!-- ════ Tap ════ -->
+  <h2 id="sec-tap">Tap</h2>
+  <p>
+    The simplest gesture. Finger goes down, stays nearly still, comes back up quickly.
+    It's the touch equivalent of a mouse click &mdash; defined by what <em>doesn't</em>
+    happen. No significant movement (less than ~{GESTURE.TOUCH_SLOP}px), no long hold (under ~{GESTURE.TAP_MAX_MS}ms).
+  </p>
+
+  <div class="diagram" id="dia-tap-timeline">
+    <div class="diagram-caption">Tap: quick touch with minimal displacement</div>
+  </div>
+
+  <span class="fig-label">fig-100 &middot; tap detector</span>
+  <div class="demo demo-grid" id="demo-tap" style="height:160px; cursor:pointer;" tabindex="0" role="button" aria-label="Tap demo — tap anywhere">
+    <div class="demo-readout" id="tap-readout" aria-live="polite" role="status"></div>
+    <div class="demo-hint" id="hint-tap">tap anywhere</div>
+  </div>
+
+  <div class="section-sep">&middot;&middot;&middot;&middot;&middot;</div>
+
+  <!-- ════ Double Tap ════ -->
+  <h2 id="sec-doubletap">Double Tap</h2>
+  <p>
+    Two taps in quick succession, near the same spot. The tricky part: the system
+    has to decide whether the first tap is a single tap or the beginning of a double tap.
+    The classic solution is a <strong>{GESTURE.DOUBLE_TAP_MS}ms wait</strong> after the first tap. If a second
+    arrives within that window, it's a double tap. If not, fire the single tap.
+  </p>
+  <p>
+    This delay is why interfaces that support both single and double tap often feel
+    sluggish. The best approach: either fire the single tap immediately and reverse it if
+    a double tap follows, or assign single and double tap to separate, unambiguous targets
+    so they never conflict.
+  </p>
+
+  <div class="diagram" id="dia-doubletap-timeline">
+    <div class="diagram-caption">Double tap: two taps within {GESTURE.DOUBLE_TAP_MS}ms and {GESTURE.DOUBLE_TAP_DISTANCE}px</div>
+  </div>
+
+  <span class="fig-label">fig-101 &middot; single vs double tap</span>
+  <div class="demo demo-grid" id="demo-doubletap" style="height:160px; cursor:pointer;" tabindex="0" role="button" aria-label="Double tap demo — tap anywhere once or twice">
+    <div class="demo-readout" id="dtap-readout" aria-live="polite" role="status"></div>
+    <div class="demo-hint" id="hint-dtap">tap anywhere</div>
+  </div>
+
+  <div class="section-sep">&middot;&middot;&middot;&middot;&middot;</div>
+
+  <!-- ════ Long Press ════ -->
+  <h2 id="sec-longpress">Long Press</h2>
+  <p>
+    Finger goes down and stays down without moving. After a threshold (typically
+    {GESTURE.LONG_PRESS_MS}&ndash;500ms), the system fires a long press. It's the only gesture where
+    <strong>time alone triggers recognition</strong> while the finger is still touching.
+  </p>
+  <p>
+    The key design principle: show a <strong>progress indicator</strong> &mdash; a ring
+    filling around the touch point &mdash; so the user knows something will happen if they
+    keep holding. Without visual feedback, the user is just staring at a screen wondering
+    if anything registered. This &ldquo;dead air&rdquo; feeling is one of the worst UX failures
+    in gesture design.
+  </p>
+
+  <div class="diagram" id="dia-longpress-timeline">
+    <div class="diagram-caption">Long press: timer fires while finger is still down</div>
+  </div>
+
+  <span class="fig-label">fig-102 &middot; long press with progress</span>
+  <div class="demo demo-grid" id="demo-longpress" style="height:160px; cursor:pointer;" tabindex="0" role="button" aria-label="Long press demo — press and hold anywhere">
+    <div class="demo-readout" id="lp-readout" aria-live="polite" role="status"></div>
+    <div class="demo-hint" id="hint-lp">press and hold</div>
+  </div>
+
+  <div class="section-sep">&middot;&middot;&middot;&middot;&middot;</div>
+
+  <!-- ════ Swipe ════ -->
+  <h2 id="sec-swipe">Swipe</h2>
+  <p>
+    A quick, directional finger movement &mdash; short, fast, and decisive. Swipe is defined
+    by both <strong>velocity</strong> (how fast your finger was moving at release) and
+    <strong>direction</strong> (left, right, up, or down). It's distinct from a slow drag:
+    the system checks whether the release speed exceeds a threshold (typically 600&ndash;1000 px/s)
+    and whether the finger traveled far enough in a dominant direction.
+  </p>
+  <p>
+    This demo intentionally shows both rules together: swipe is recognized if release speed
+    exceeds about <strong>{SWIPE_DEMO_VELOCITY}px/s</strong> or horizontal travel exceeds
+    <strong>{SWIPE_DEMO_DISTANCE}px</strong>, so you can test velocity and displacement independently.
+  </p>
+  <p>
+    Swipe is the gesture that drives some of the most iconic mobile interactions &mdash;
+    dismissing notifications, navigating between pages, revealing actions. But the recognition
+    itself is simple: it's a drag that ends with sufficient velocity in a clear direction.
+    The complexity lives in <em>what happens after</em> the swipe is detected (covered in
+    <a href="/patterns/">Chapter 3</a>).
+  </p>
+
+  <span class="fig-label">fig-103 &middot; swipe card</span>
+  <div class="demo demo-grid" id="demo-swipe-gesture" style="height:220px; cursor:grab;" tabindex="0" aria-label="Swipe demo — drag card left or right, release quickly to swipe">
+    <div class="demo-readout" id="swipe-g-readout" aria-live="polite" role="status"></div>
+    <div class="demo-hint" id="hint-swipe-g">drag card and release</div>
+  </div>
+
+  <div class="section-sep">&middot;&middot;&middot;&middot;&middot;</div>
+
+  <!-- ════ Drag / Pan ════ -->
+  <h2 id="sec-drag">Drag / Pan</h2>
+  <p>
+    The fundamental continuous gesture: your finger goes down, moves, and the element
+    follows. <strong>1:1 tracking</strong> means the element moves exactly as far as your
+    finger, with zero lag and zero drift. This direct coupling is what makes drag feel
+    &ldquo;real&rdquo; &mdash; the element appears glued to your finger.
+  </p>
+  <p>
+    But a drag doesn't start the instant you touch down. There's a dead zone called the
+    <strong>touch slop</strong> &mdash; typically {GESTURE.TOUCH_SLOP}px &mdash; that your finger must
+    cross before the system commits to a drag. This prevents accidental drags when you
+    intended a tap or long press.
+  </p>
+  <p>
+    On release, the element springs back to its resting position. This provides closure &mdash;
+    you see the gesture has ended and the system has returned to its default state.
+  </p>
+
+  <div class="diagram" id="dia-drag">
+    <div class="diagram-caption">Drag: 1:1 tracking after crossing the touch slop zone</div>
+  </div>
+
+  <span class="fig-label">fig-104a &middot; 1:1 tracking + velocity transfer</span>
+  <div class="demo demo-grid" id="demo-drag-direct" style="height:180px; cursor:grab;" tabindex="0" aria-label="Direct drag demo — drag the circle, it follows exactly with momentum on release">
+    <div class="demo-readout" id="drag-direct-readout" aria-live="polite" role="status"></div>
+    <div class="demo-hint" id="hint-drag-direct">drag and release quickly</div>
+  </div>
+
+  <p>
+    The key to making 1:1 tracking feel natural: <strong>transfer the finger's velocity
+    to the element on release</strong>. Sample the last ~100ms of movement, calculate
+    the speed, and give that momentum to the spring. The element continues moving in
+    the direction you were dragging, then settles into place.
+  </p>
+
+  <p>
+    Compare with a <strong>spring delay</strong> approach below. The element follows
+    your finger with a soft lag during the drag itself, creating a sense of weight.
+    This can feel more organic but sacrifices precision.
+  </p>
+
+  <span class="fig-label">fig-104b &middot; spring delay tracking</span>
+  <div class="demo demo-grid" id="demo-drag-spring" style="height:180px; cursor:grab;" tabindex="0" aria-label="Spring drag demo — drag the circle, it follows with delay">
+    <div class="demo-readout" id="drag-spring-readout" aria-live="polite" role="status"></div>
+    <div class="demo-hint" id="hint-drag-spring">drag the circle</div>
+  </div>
+
+  <div class="section-sep">&middot;&middot;&middot;&middot;&middot;</div>
+
+  <!-- ════ Axis Lock ════ -->
+  <h2 id="sec-axislock">Axis Lock</h2>
+  <p>
+    When you scroll a list, you usually mean to scroll vertically <em>or</em>
+    horizontally, not both. <strong>Axis locking</strong> detects the dominant
+    direction of your initial movement and constrains everything after that to a single
+    axis. This prevents diagonal wobble and makes scrolling feel precise and intentional.
+  </p>
+  <p>
+    The system decides the axis the moment your finger crosses the touch slop threshold:
+    whichever direction has more displacement wins, and the other axis is locked out for
+    the rest of the gesture. This is why scrolling a list feels like it's on a rail.
+  </p>
+
+  <div class="diagram" id="dia-axislock">
+    <div class="diagram-caption">Axis lock: initial movement determines X or Y constraint</div>
+  </div>
+
+  <span class="fig-label">fig-105 &middot; axis lock demo</span>
+  <div class="demo demo-grid" id="demo-axislock" style="height:220px; cursor:grab;" tabindex="0" aria-label="Axis lock demo — drag the circle and it locks to the dominant axis">
+    <div class="demo-readout" id="axislock-readout" aria-live="polite" role="status"></div>
+    <div class="demo-hint" id="hint-axislock">drag the circle</div>
+  </div>
+
+  <div class="section-sep">&middot;&middot;&middot;&middot;&middot;</div>
+
+  <!-- ════ Pinch / Zoom ════ -->
+  <h2 id="sec-pinch">Pinch / Zoom</h2>
+  <p>
+    The only common gesture that requires <strong>two fingers</strong>. Place two fingers
+    on the screen and move them apart to zoom in, together to zoom out. The scale change
+    tracks the ratio between your current finger distance and where you started &mdash;
+    so spreading your fingers 2&times; apart doubles the zoom level.
+  </p>
+  <p>
+    The system tracks each finger independently using pointer IDs. When two pointers are
+    active, it calculates the <strong>distance between them</strong> (the pinch span) and
+    the <strong>midpoint</strong> (the zoom center). The zoom center matters because it
+    determines <em>where</em> the zoom happens &mdash; the point between your fingers stays
+    fixed on screen while everything else scales around it.
+  </p>
+  <p>
+    On release, if the scale is outside the allowed range (too small or too large),
+    a spring pulls it back to the nearest valid value &mdash; rubber banding applied to
+    scale instead of position. On desktop, you can use scroll wheel, right-click drag,
+    and keyboard shortcuts (<code>+</code>/<code>-</code>/<code>0</code>) as fallback controls.
+  </p>
+
+  <span class="fig-label">fig-106 &middot; pinch to zoom</span>
+  <div class="demo demo-grid" id="demo-pinch" style="height:260px;" tabindex="0" aria-label="Pinch demo — use two fingers to zoom, or use mouse wheel, right-click drag, and keyboard on desktop">
+    <div class="demo-readout" id="pinch-readout" aria-live="polite" role="status"></div>
+    <div class="demo-hint" id="hint-pinch">wheel · right-click drag · +/-/0 keys</div>
+  </div>
+
+  <div class="section-sep">&middot;&middot;&middot;&middot;&middot;</div>
+
+  <!-- ════ Fling ════ -->
+  <h2 id="sec-fling">Fling</h2>
+  <p>
+    A drag that ends while your finger is still moving fast is a <strong>fling</strong>.
+    The velocity at the moment you lift your finger determines what happens next &mdash;
+    if the speed exceeds a threshold, the system treats it as a fling rather than
+    a simple release.
+  </p>
+  <p>
+    Fling is the bridge between gesture and physics. The recognizer decides <em>whether</em>
+    a fling occurred; the physics system decides <em>what happens after</em> &mdash;
+    momentum scrolling, page snap, or dismiss animation. The velocity from your fling
+    becomes the initial speed for whatever animation follows.
+  </p>
+
+  <div class="diagram" id="dia-fling">
+    <div class="diagram-caption">Fling: drag ending with high velocity becomes a fling event</div>
+  </div>
+
+  <span class="fig-label">fig-107 &middot; fling detector</span>
+  <div class="demo demo-grid" id="demo-fling" style="height:220px; cursor:grab;" tabindex="0" aria-label="Fling demo — drag the circle quickly and release to see fling detection">
+    <div class="demo-readout" id="fling-readout" aria-live="polite" role="status"></div>
+    <div class="demo-hint" id="hint-fling">drag and release quickly</div>
+  </div>
+
+  <div class="section-sep">&middot;&middot;&middot;&middot;&middot;</div>
+
+  <!-- ════ Gesture Competition ════ -->
+  <h2 id="sec-arbitration">Gesture competition</h2>
+  <p>
+    Here's the fundamental challenge: <strong>tap, long press, and drag all start with
+    the same action</strong> &mdash; finger down. The system can't know in advance which
+    gesture you intend. It has to wait, observe, and decide.
+  </p>
+  <p>
+    This is called <strong>gesture arbitration</strong>. The moment your finger touches
+    the screen, three recognizers start competing. The first condition to trigger wins:
+  </p>
+  <ul class="note-list">
+    <li><strong>Finger moves more than ~{GESTURE.TOUCH_SLOP}px</strong> &rarr; it's a drag (or swipe if fast enough). Cancel the long-press timer.</li>
+    <li><strong>Finger lifts quickly</strong> &rarr; it's a tap. Cancel the long-press timer.</li>
+    <li><strong>{GESTURE.LONG_PRESS_MS}ms passes with no movement</strong> &rarr; it's a long press.</li>
+  </ul>
+  <p>
+    Try it below: quick tap, hold without moving, or press and drag. Watch the state badges
+    to see which recognizer wins.
+  </p>
+
+  <div class="diagram" id="dia-arbitration">
+    <div class="diagram-caption">Gesture arbitration: three exits from the PRESSED state</div>
+  </div>
+
+  <span class="fig-label">fig-109 &middot; recognizer arena</span>
+  <div class="state-badges" id="arena-states">
+    <span class="state-badge" id="badge-idle">idle</span>
+    <span class="state-badge" id="badge-pressed">pressed</span>
+    <span class="state-badge" id="badge-tap">tap</span>
+    <span class="state-badge" id="badge-longpress">long press</span>
+    <span class="state-badge" id="badge-drag">drag</span>
+  </div>
+  <div class="demo demo-grid" id="demo-arena" style="height:220px; cursor:pointer;" tabindex="0" aria-label="Gesture arbitration demo — tap, hold, or drag to see which gesture wins">
+    <div class="box box-orange" id="arena-box" style="pointer-events:none;"></div>
+    <svg class="progress-ring" id="arena-ring" width="84" height="84" style="pointer-events:none;">
+      <circle class="track" cx="42" cy="42" r="38"/>
+      <circle class="fill" id="arena-ring-fill" cx="42" cy="42" r="38"/>
+    </svg>
+    <div class="demo-readout" id="arena-readout" aria-live="polite" role="status"></div>
+    <div class="demo-hint" id="hint-arena">tap, hold, or drag</div>
+  </div>
+
+  <div class="section-sep">&middot;&middot;&middot;&middot;&middot;</div>
+
+  <!-- ════ Chapter Summary ════ -->
+  <h2 id="sec-summary">Putting it together</h2>
+  <p>
+    Every gesture is built from the same raw material: <strong>pointer down, move, up</strong>.
+    What distinguishes them is timing, displacement, velocity, and finger count:
+  </p>
+  <ul class="note-list">
+    <li><strong>Tap</strong> &mdash; quick down + up under {GESTURE.TAP_MAX_MS}ms, minimal movement</li>
+    <li><strong>Double tap</strong> &mdash; two taps within ~{GESTURE.DOUBLE_TAP_MS}ms</li>
+    <li><strong>Long press</strong> &mdash; hold without moving for ~{GESTURE.LONG_PRESS_MS}ms</li>
+    <li><strong>Drag</strong> &mdash; move beyond touch slop (~{GESTURE.TOUCH_SLOP}px), 1:1 tracking</li>
+    <li><strong>Swipe</strong> &mdash; fast directional drag (&gt;{SWIPE_DEMO_VELOCITY}px/s or &gt;{SWIPE_DEMO_DISTANCE}px in this demo)</li>
+    <li><strong>Fling</strong> &mdash; drag released with high velocity (&gt;{FLING_DEMO_THRESHOLD} px/s)</li>
+    <li><strong>Pinch / Zoom</strong> &mdash; two fingers, distance change = scale</li>
+  </ul>
+  <p>
+    These primitives combine to create every touch interaction you use daily &mdash;
+    scrolling, dismissing, zooming, selecting. In the next chapter, we'll explore how
+    <strong>physics</strong> makes these gestures feel alive: momentum, springs, bounce-back,
+    and the math that turns cold input into warm, responsive motion.
+  </p>
+
+  <ChapterNav chapterId="ch1" />
+
+  <script>
+    import '../demos/touch-down.js'
+    import '../demos/tap.js'
+    import '../demos/double-tap.js'
+    import '../demos/long-press.js'
+    import '../demos/swipe-gesture.js'
+    import '../demos/drag-direct.js'
+    import '../demos/drag-spring.js'
+    import '../demos/axis-lock.js'
+    import '../demos/fling.js'
+    import '../demos/pinch-zoom.js'
+    import '../demos/recognizer-arena.js'
+    import { drawTapTimeline, drawDoubleTapTimeline, drawLongPressTimeline, drawArbitrationDiagram } from '../demos/diagrams.js'
+    import { drawDragDiagram, drawAxisLockDiagram, drawFlingDiagram } from '../demos/ch2-diagrams.js'
+    drawTapTimeline('dia-tap-timeline')
+    drawDoubleTapTimeline('dia-doubletap-timeline')
+    drawLongPressTimeline('dia-longpress-timeline')
+    drawDragDiagram('dia-drag')
+    drawAxisLockDiagram('dia-axislock')
+    drawFlingDiagram('dia-fling')
+    drawArbitrationDiagram('dia-arbitration')
+  </script>
+</BaseLayout>

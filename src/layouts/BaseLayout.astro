@@ -1,0 +1,182 @@
+---
+import Sidebar from '../components/Sidebar.astro'
+import type { SiteLang } from '../data/chapters'
+
+import '../styles/tokens.css'
+import '../styles/reset.css'
+import '../styles/layout.css'
+import '../styles/typography.css'
+import '../styles/sidebar.css'
+import '../styles/demo.css'
+import '../styles/components.css'
+import '../styles/responsive.css'
+
+interface Props {
+  title: string
+  breadcrumbLabel: string
+  description?: string
+  lang?: SiteLang
+}
+
+const path = Astro.url.pathname
+const normalizedPath = path === '/' ? '/' : (path.endsWith('/') ? path : `${path}/`)
+const inferredLang: SiteLang = normalizedPath === '/zh/' || normalizedPath.startsWith('/zh/') ? 'zh' : 'en'
+
+const {
+  title,
+  breadcrumbLabel,
+  lang = inferredLang,
+} = Astro.props as Props
+
+const isZh = lang === 'zh'
+const description = Astro.props.description ?? (
+  isZh
+    ? '一份关于手势驱动界面的交互指南：触摸机制、物理动画与交互模式。'
+    : 'Interactive guide to gesture-driven UI design — touch mechanics, physics animations, and interaction patterns.'
+)
+
+const homeHref = isZh ? '/zh/' : '/'
+const homeLabel = isZh ? '手势指南' : 'Gesture Guide'
+const skipLinkLabel = isZh ? '跳转到正文' : 'Skip to content'
+const mobileToggleLabel = isZh ? '切换导航' : 'Toggle navigation'
+const mainNavLabel = isZh ? '主导航' : 'Main navigation'
+const breadcrumbNavLabel = isZh ? '面包屑' : 'Breadcrumb'
+const ropeLabel = isZh ? '拉动绳子切换深色模式' : 'Pull rope to toggle dark mode'
+const footerLabel = isZh
+  ? '手势指南 · 如何设计自然直觉的屏幕交互'
+  : 'Gesture Guide · How to Create Intuitive Interactions on Digital Screens'
+
+const switchHref = isZh
+  ? (normalizedPath.replace(/^\/zh\//, '/') || '/')
+  : (normalizedPath === '/' ? '/zh/' : `/zh${normalizedPath}`)
+const switchLabel = isZh ? 'EN' : '中文'
+const switchAria = isZh ? 'Switch to English' : '切换到中文'
+---
+
+<!DOCTYPE html>
+<html lang={isZh ? 'zh-CN' : 'en'}>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{title}</title>
+  <meta name="description" content={description} />
+  <meta property="og:title" content={title} />
+  <meta property="og:description" content={description} />
+  <meta property="og:type" content="article" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content={title} />
+  <meta name="twitter:description" content={description} />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&family=JetBrains+Mono:wght@400;500;600;700&family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet" />
+  <script is:inline>
+    // Restore theme before paint to prevent flash
+    (function() {
+      var saved = localStorage.getItem('theme')
+      if (saved) {
+        document.documentElement.setAttribute('data-theme', saved)
+      } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.documentElement.setAttribute('data-theme', 'dark')
+      }
+    })()
+  </script>
+</head>
+<body>
+
+<a href="#main-content" class="skip-link">{skipLinkLabel}</a>
+
+<div class="layout">
+  <button class="mobile-nav-toggle" aria-label={mobileToggleLabel}>
+    <svg viewBox="0 0 20 20" fill="currentColor">
+      <path d="M3 5h14M3 10h14M3 15h14" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+    </svg>
+  </button>
+  <div class="sidebar-overlay"></div>
+  <nav id="sidebar" class="sidebar" aria-label={mainNavLabel}>
+    <Sidebar lang={lang} />
+  </nav>
+
+  <div class="content-region">
+    <nav class="breadcrumb" aria-label={breadcrumbNavLabel}>
+      <a href={homeHref}>{homeLabel}</a>
+      <span class="sep" aria-hidden="true">/</span>
+      <span class="current" aria-current="page">{breadcrumbLabel}</span>
+      <span class="breadcrumb-spacer"></span>
+      <a class="lang-switch" href={switchHref} aria-label={switchAria} hreflang={isZh ? 'en' : 'zh-CN'}>
+        {switchLabel}
+      </a>
+      <canvas id="rope-toggle" aria-label={ropeLabel} role="switch" aria-checked="false" tabindex="0"></canvas>
+    </nav>
+
+    <div class="article" id="main-content" role="main">
+      <slot />
+
+      <div class="footer">
+        {footerLabel}
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  import { initScrollSpy } from '../nav.js'
+  import { initRopePull } from '../components/rope-toggle.js'
+
+  function init() {
+    initScrollSpy()
+    initRopePull()
+
+    const toggle = document.querySelector('.mobile-nav-toggle')
+    const sidebar = document.getElementById('sidebar')
+    const overlay = document.querySelector('.sidebar-overlay')
+    const langSwitch = document.querySelector('.lang-switch')
+
+    if (langSwitch && window.location.hash) {
+      const baseHref = langSwitch.getAttribute('href') || ''
+      langSwitch.setAttribute('href', `${baseHref}${window.location.hash}`)
+    }
+
+    function openSidebar() {
+      sidebar?.classList.add('open')
+      overlay?.classList.add('active')
+      toggle?.setAttribute('aria-expanded', 'true')
+    }
+
+    function closeSidebar() {
+      sidebar?.classList.remove('open')
+      overlay?.classList.remove('active')
+      toggle?.setAttribute('aria-expanded', 'false')
+    }
+
+    if (toggle && sidebar) {
+      toggle.setAttribute('aria-expanded', 'false')
+      toggle.setAttribute('aria-controls', 'sidebar')
+
+      toggle.addEventListener('click', () => {
+        const isOpen = sidebar.classList.contains('open')
+        isOpen ? closeSidebar() : openSidebar()
+      })
+
+      overlay?.addEventListener('click', closeSidebar)
+
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && sidebar.classList.contains('open')) {
+          closeSidebar()
+          toggle.focus()
+        }
+      })
+
+      sidebar.addEventListener('click', (e) => {
+        if ((e.target as HTMLElement).tagName === 'A' && window.innerWidth <= 1100) {
+          closeSidebar()
+        }
+      })
+    }
+  }
+
+  init()
+</script>
+
+</body>
+</html>

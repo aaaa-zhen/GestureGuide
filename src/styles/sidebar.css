@@ -1,0 +1,92 @@
+/* ── Sidebar Styles (white theme) ── */
+
+.sidebar-title {
+  display: block;
+  padding: 0 24px 0 36px;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--sidebar-accent);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 36px;
+}
+
+.sidebar-title:hover {
+  color: var(--fg);
+}
+
+.sidebar-group {
+  margin-bottom: 24px;
+}
+
+.sidebar-group-label {
+  display: block;
+  padding: 0 24px 0 36px;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: var(--sidebar-chapter);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+  border-left: none;
+}
+
+a.sidebar-group-label::before {
+  content: none;
+}
+
+a.sidebar-group-label:hover {
+  color: var(--sidebar-fg-active);
+}
+
+.sidebar-group ul {
+  padding: 0;
+}
+
+.sidebar-group li {
+  margin: 0;
+}
+
+.sidebar-group a {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 4px 24px 4px 36px;
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  color: var(--sidebar-fg);
+  line-height: 1.5;
+  transition: color 0.12s;
+  border-left: 3px solid transparent;
+}
+
+.sidebar-group a::before {
+  content: "\2022";
+  color: var(--sidebar-fg);
+  flex-shrink: 0;
+  font-size: 0.6em;
+}
+
+.sidebar-group a:hover {
+  color: var(--sidebar-fg-hover);
+}
+
+.sidebar-group a:hover::before {
+  color: var(--sidebar-fg-hover);
+}
+
+.sidebar-group a.active {
+  color: var(--sidebar-fg-active);
+  font-weight: 500;
+}
+
+.sidebar-group a.active::before {
+  color: var(--sidebar-accent);
+}
+
+/* Chapter-level active (current page) */
+.sidebar-group.active-chapter > .sidebar-group-label {
+  color: var(--sidebar-chapter);
+}

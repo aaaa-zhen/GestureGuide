@@ -1,0 +1,399 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro'
+import ChapterNav from '../components/ChapterNav.astro'
+---
+
+<BaseLayout title="Gesture Guide — Physics Feel" breadcrumbLabel="2. Physics Feel" description="Momentum scrolling, spring animations, snap points, rubber banding, and bounce — the physics that makes gestures feel natural.">
+  <p class="byline">Chapter 2</p>
+  <h1>Physics Feel</h1>
+  <p class="lead">
+    What happens after your finger lifts? Physics govern the motion after release &mdash;
+    momentum, friction, springs, and elastic boundaries. These behaviors are what make
+    gesture-driven interfaces feel natural and alive.
+  </p>
+
+  <div class="section-sep">&middot;&middot;&middot;&middot;&middot;</div>
+
+  <!-- ════════════════════════════════════════════════════════════════════════ -->
+  <!-- PART A: AFTER RELEASE                                                    -->
+  <!-- ════════════════════════════════════════════════════════════════════════ -->
+
+  <p class="part-label">Part A</p>
+  <h2 class="part-title">After Release</h2>
+  <p class="part-intro">
+    The moment your finger lifts, velocity doesn't vanish &mdash; it transfers to the content.
+    Understanding momentum, friction, and decay prediction is fundamental to making
+    interfaces that feel physically honest.
+  </p>
+
+  <div class="section-sep">&middot;&middot;&middot;&middot;&middot;</div>
+
+  <!-- ════ Momentum / Inertia ════ -->
+  <h2 id="sec-momentum">Momentum</h2>
+  <p>
+    When you fling a list on your phone, it doesn't stop the instant your finger lifts.
+    It continues to scroll, as though the surface has inertia. This is
+    <strong>momentum scrolling</strong> &mdash; the velocity captured at release
+    is carried forward.
+  </p>
+  <p>
+    Without momentum, every scroll would feel like dragging through mud. With it,
+    a quick flick sends content flying exactly as far as your intent suggests.
+  </p>
+
+  <div class="diagram" id="dia-momentum">
+    <div class="diagram-caption">Momentum: velocity continues after finger lifts</div>
+  </div>
+
+  <span class="fig-label">fig-200 &middot; momentum scroll</span>
+  <div class="demo demo-grid" id="demo-momentum" style="height:260px;" tabindex="0" aria-label="Momentum demo — drag up or down to fling the number wheel">
+    <div class="lp-shell">
+      <div class="lp-track" id="momentum-wheel"></div>
+    </div>
+    <div class="vel-bar" id="momentum-vel-bar" aria-hidden="true">
+      <div class="vel-bar-inner" id="momentum-vel-inner"></div>
+    </div>
+    <div class="demo-readout" id="momentum-readout" aria-live="polite" role="status"></div>
+    <div class="demo-hint" id="hint-momentum">drag up / down</div>
+  </div>
+
+  <div class="section-sep">&middot;&middot;&middot;&middot;&middot;</div>
+
+  <!-- ════ Friction / Decay ════ -->
+  <h2 id="sec-friction">Friction</h2>
+  <p>
+    Momentum doesn't last forever. <strong>Friction</strong> gradually slows
+    the content until it stops. The friction coefficient is the single most important
+    tuning knob for scroll feel.
+  </p>
+  <p>
+    iOS and Android use different friction values &mdash; this is why the same fling
+    gesture feels different on each platform. Too little friction and content feels
+    &ldquo;slippery&rdquo;; too much and it feels &ldquo;sticky.&rdquo;
+  </p>
+  <p>
+    Try the slider below to feel the difference:
+  </p>
+  <div class="demo-controls" style="margin-top: 1rem;">
+    <label>
+      friction
+      <input type="range" id="sl-mom-friction" min="0.90" max="0.99" step="0.005" value="0.95" />
+      <span class="ctrl-value" id="vl-mom-friction">0.950</span>
+    </label>
+  </div>
+
+  <div class="section-sep">&middot;&middot;&middot;&middot;&middot;</div>
+
+  <!-- ════ Decay ════ -->
+  <h2 id="sec-decay">Decay</h2>
+  <p>
+    Momentum gives you the starting velocity. But what happens next? The velocity
+    doesn't vanish instantly &mdash; it <strong>decays</strong>, following an
+    exponential curve: fast at first, then gradually tapering off.
+  </p>
+  <p>
+    This shape is what makes deceleration feel natural. Linear deceleration
+    (constant braking) would feel robotic. Exponential decay feels like real friction &mdash;
+    the slower you're going, the less force acts on you.
+  </p>
+  <p>
+    Fling the dot below. Watch the ghost marks: evenly spaced in <em>time</em>,
+    but not in <em>space</em>. The wide gaps at the start and the tight gaps
+    at the end &mdash; that's the decay curve made visible.
+  </p>
+
+  <span class="fig-label">fig-201 &middot; exponential decay</span>
+  <div class="demo demo-grid" id="demo-decay" style="height:320px;" tabindex="0" aria-label="Decay demo — fling the dot to visualize exponential velocity decay">
+    <div class="demo-readout" id="decay-readout" aria-live="polite" role="status"></div>
+    <span class="demo-hint" id="hint-decay">fling the dot</span>
+  </div>
+  <div class="demo-controls">
+    <label>
+      friction
+      <input type="range" id="sl-decay-friction" min="0.90" max="0.99" step="0.005" value="0.95" />
+      <span class="ctrl-value" id="vl-decay-friction">0.950</span>
+    </label>
+  </div>
+
+  <div class="section-sep">&middot;&middot;&middot;&middot;&middot;</div>
+
+  <!-- ════════════════════════════════════════════════════════════════════════ -->
+  <!-- PART B: SPRINGS                                                          -->
+  <!-- ════════════════════════════════════════════════════════════════════════ -->
+
+  <p class="part-label">Part B</p>
+  <h2 class="part-title">Springs</h2>
+  <p class="part-intro">
+    Springs are the foundation of responsive animation. Unlike duration-based animations,
+    springs can be interrupted at any moment and respond gracefully &mdash; this is
+    what makes interfaces feel fluid rather than canned.
+  </p>
+
+  <div class="section-sep">&middot;&middot;&middot;&middot;&middot;</div>
+
+  <!-- ════ Spring Basics ════ -->
+  <h2 id="sec-spring">Why Springs?</h2>
+  <p>
+    When you drag a sheet down and let go, it bounces back. That bounce is not a programmed
+    animation &mdash; it's a simulated spring. This distinction matters profoundly.
+  </p>
+
+  <div class="term-box">
+    <p>
+      &ldquo;Animation APIs parameterized by eg duration and curve are fundamentally
+      opposed to continuous, fluid interactivity.&rdquo;
+      <br />&mdash; <strong>Andy Matuschak</strong>, former Apple UIKit team
+    </p>
+  </div>
+
+  <p>
+    Traditional CSS animations are defined by <strong>duration + easing curve</strong>
+    (e.g. <code>transition: 0.3s ease-in-out</code>). This approach has a fatal flaw:
+    the animation can't be interrupted gracefully. If the user touches mid-animation,
+    the system has to either jump to the end or restart. Neither feels right.
+  </p>
+  <p>
+    Springs solve this because they are <strong>state-based, not time-based</strong>. A spring
+    knows its current position and velocity. At any moment, you can change its
+    destination, and it will smoothly redirect &mdash; preserving momentum.
+    There's no &ldquo;duration&rdquo; to a spring. It settles when the physics say it settles.
+  </p>
+
+  <h3>Spring personality</h3>
+  <p>
+    A spring's character is defined by <strong>stiffness</strong> (how aggressively
+    it pulls back) and <strong>damping</strong> (how quickly oscillations die out):
+  </p>
+  <table class="mini-table">
+    <thead>
+      <tr><th>Feel</th><th>Character</th><th>When to use</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>Bouncy</strong></td><td>High stiffness, low damping</td><td>Playful interactions, toggles, badges</td></tr>
+      <tr><td><strong>Snappy</strong></td><td>Moderate stiffness, critically damped</td><td>Sheet dismissals, navigation, most UI</td></tr>
+      <tr><td><strong>Heavy</strong></td><td>Lower stiffness, overdamped</td><td>Modal overlays, important state changes</td></tr>
+    </tbody>
+  </table>
+
+  <div class="diagram" id="dia-spring">
+    <div class="diagram-caption">Spring: stiffness and damping define character</div>
+  </div>
+
+  <span class="fig-label">fig-202 &middot; spring physics</span>
+  <div class="demo demo-grid" id="demo-spring" style="height:260px; cursor:grab;" tabindex="0" aria-label="Spring demo — drag the box away from the anchor and release">
+    <div class="anchor-dot" style="position:absolute;width:10px;height:10px;border-radius:50%;background:var(--demo-red);pointer-events:none;"></div>
+    <div class="spring-line" style="position:absolute;height:2px;background:var(--fg-muted);transform-origin:0 50%;pointer-events:none;"></div>
+    <div class="box box-blue" style="pointer-events:none;"></div>
+    <div class="demo-readout" id="spring-readout" aria-live="polite" role="status"></div>
+    <div class="demo-hint" id="hint-spring">drag the box</div>
+  </div>
+  <div class="demo-controls">
+    <label>
+      stiffness k
+      <input type="range" id="sl-k" min="50" max="600" step="10" value="290" />
+      <span class="ctrl-value" id="vl-k">290</span>
+    </label>
+    <label>
+      damping b
+      <input type="range" id="sl-b" min="5" max="60" step="1" value="24" />
+      <span class="ctrl-value" id="vl-b">24</span>
+    </label>
+  </div>
+
+  <div class="section-sep">&middot;&middot;&middot;&middot;&middot;</div>
+
+  <!-- ════ Elastic ════ -->
+  <h2 id="sec-elastic">Elastic</h2>
+  <p>
+    Elastic is a spring with <strong>exaggerated overshoot</strong>. Where a typical spring
+    settles smoothly, an elastic spring intentionally overshoots the target and oscillates
+    visibly before settling. Think of a rubber band snapping back.
+  </p>
+  <p>
+    The effect is achieved by reducing damping (letting the spring ring longer) while keeping
+    stiffness high. The result: a bouncy, playful motion that draws attention.
+  </p>
+  <p>
+    Use elastic sparingly. It's perfect for:
+  </p>
+  <ul class="note-list">
+    <li><strong>Celebratory moments</strong> &mdash; badges, achievements, confirmations</li>
+    <li><strong>Attention-grabbing</strong> &mdash; notifications, errors that need action</li>
+    <li><strong>Playful UI</strong> &mdash; toggles, reactions, emoji</li>
+  </ul>
+  <p>
+    Avoid elastic for frequent interactions. The exaggerated bounce becomes fatiguing
+    when repeated dozens of times per session.
+  </p>
+
+  <span class="fig-label">fig-202b &middot; elastic spring</span>
+  <div class="demo demo-grid" id="demo-elastic" style="height:200px; cursor:pointer;" tabindex="0" aria-label="Elastic demo — click to trigger, adjust stiffness and damping">
+    <div class="demo-readout" id="elastic-readout" aria-live="polite" role="status"></div>
+    <div class="demo-hint" id="hint-elastic">click anywhere</div>
+  </div>
+  <div class="demo-controls">
+    <label>
+      stiffness k
+      <input type="range" id="sl-el-k" min="50" max="800" step="10" value="500" />
+      <span class="ctrl-value" id="vl-el-k">500</span>
+    </label>
+    <label>
+      damping b
+      <input type="range" id="sl-el-b" min="2" max="60" step="1" value="8" />
+      <span class="ctrl-value" id="vl-el-b">8</span>
+    </label>
+  </div>
+
+  <div class="section-sep">&middot;&middot;&middot;&middot;&middot;</div>
+
+  <!-- ════ Snap Points ════ -->
+  <h2 id="sec-snap">Fling &amp; Snap</h2>
+  <p>
+    Many interfaces need to <strong>quantize position</strong> after release. A carousel snaps
+    to whole pages. A drawer snaps to open or closed. A picker snaps to discrete values.
+  </p>
+  <p>
+    The pattern: on release, use an <strong>exponential decay</strong> model to predict
+    where the content would naturally come to rest &mdash;
+    <code>target = pos + v / (1 &minus; decayRate)</code>. Round that predicted
+    position to the nearest valid snap point, then drive there with a
+    <strong>critically damped spring</strong> (<em>&zeta; = 1.0</em>). The fling velocity
+    seeds the spring&rsquo;s initial velocity, so the transition is seamless &mdash;
+    no jump, no pause. A fast fling predicts further and skips items;
+    a slow release snaps to the nearest one.
+  </p>
+
+  <div class="diagram" id="dia-snap">
+    <div class="diagram-caption">Decay-targeted snap: same position, different velocity &rarr; different predicted target</div>
+  </div>
+
+  <span class="fig-label">fig-203 &middot; discrete picker</span>
+  <div class="demo demo-grid" id="demo-snap" style="height:280px; cursor:grab;" tabindex="0" aria-label="iOS wheel picker demo — scroll vertically to select, fling to snap">
+    <div class="snap-track" id="snap-track"></div>
+    <div class="snap-dot" id="snap-dot" style="pointer-events:none;"></div>
+    <div class="demo-readout" id="snap-readout" aria-live="polite" role="status"></div>
+    <div class="demo-hint" id="hint-snap">scroll to pick</div>
+  </div>
+
+  <div class="section-sep">&middot;&middot;&middot;&middot;&middot;</div>
+
+  <!-- ════════════════════════════════════════════════════════════════════════ -->
+  <!-- PART C: BOUNDARIES                                                       -->
+  <!-- ════════════════════════════════════════════════════════════════════════ -->
+
+  <p class="part-label">Part C</p>
+  <h2 class="part-title">Boundaries</h2>
+  <p class="part-intro">
+    What happens at the edges? Hard stops feel like walls. Elastic boundaries
+    communicate limits while preserving the illusion of a continuous physical world.
+  </p>
+
+  <div class="section-sep">&middot;&middot;&middot;&middot;&middot;</div>
+
+  <!-- ════ Rubber Band ════ -->
+  <h2 id="sec-rubber">Rubber Band / Overscroll</h2>
+  <p>
+    What should happen when you drag past the edge of a scrollable region? The content could
+    stop dead &mdash; but that feels like hitting a wall. Instead, most platforms use a
+    <strong>rubber band</strong> effect: content follows your finger with increasing
+    resistance, like stretching an elastic band.
+  </p>
+  <p>
+    The key: the mapping from finger displacement to visual displacement becomes
+    <strong>nonlinear</strong> past the boundary. The further you drag, the less the content
+    moves per pixel of finger travel.
+  </p>
+  <p>
+    This is a <strong>communication device</strong>. The increasing resistance tells you
+    &ldquo;you've reached the end&rdquo; in a way that feels physically honest,
+    without the jarring hard stop of a wall.
+  </p>
+
+  <div class="diagram" id="dia-rubberband">
+    <div class="diagram-caption">Rubber band: resistance increases past the boundary</div>
+  </div>
+
+  <span class="fig-label">fig-204 &middot; rubber band</span>
+  <div class="demo demo-grid" id="demo-rubber" style="height:260px;" tabindex="0" aria-label="Rubber band demo — drag past 0 or 60 to feel the elastic resistance">
+    <div class="lp-shell">
+      <div class="lp-track" id="rubber-wheel"></div>
+    </div>
+    <div class="demo-readout" id="rb-readout" aria-live="polite" role="status"></div>
+    <div class="demo-hint" id="hint-rubber">drag past 0 or 60</div>
+  </div>
+  <div class="demo-controls">
+    <label>
+      elasticity
+      <input type="range" id="sl-rb-range" min="40" max="300" step="10" value="120" />
+      <span class="ctrl-value" id="vl-rb-range">120</span>
+    </label>
+  </div>
+
+  <div class="section-sep">&middot;&middot;&middot;&middot;&middot;</div>
+
+  <!-- ════ Bounce-Back ════ -->
+  <h2 id="sec-bounce">Bounce-Back</h2>
+  <p>
+    Bounce-back is the complement of rubber banding. While rubber banding controls what happens
+    <em>during</em> a drag past the boundary, bounce-back controls what happens on
+    <strong>release</strong>.
+  </p>
+  <p>
+    When your finger lifts while the content is over-scrolled, a spring pulls it back
+    to the nearest valid boundary. The transition must be seamless: the spring starts from
+    the rubber-banded display position (not the raw finger position), so there's no
+    visual jump when the drag ends and the bounce begins.
+  </p>
+  <p>
+    Together, rubber band + bounce-back create the elastic snap you feel at the end
+    of every iOS scroll. It's boundary behavior that feels like physics, not code.
+  </p>
+
+  <span class="fig-label">fig-205 &middot; overscroll bounce</span>
+  <div class="demo demo-grid" id="demo-overscroll" style="height:260px;" tabindex="0" aria-label="Overscroll demo — fling the list past its edges to see the bounce-back effect">
+    <div class="lp-shell">
+      <div class="lp-track" id="overscroll-wheel"></div>
+    </div>
+    <div class="demo-readout" id="overscroll-readout" aria-live="polite" role="status"></div>
+    <div class="demo-hint" id="hint-overscroll">fling past the edges</div>
+  </div>
+
+  <div class="section-sep">&middot;&middot;&middot;&middot;&middot;</div>
+
+  <!-- ════ Chapter Summary ════ -->
+  <h2 id="sec-physics-summary">Putting it together</h2>
+  <p>
+    The physics in this chapter work together to create fluid, responsive interfaces:
+  </p>
+  <ul class="note-list">
+    <li><strong>Momentum</strong> &mdash; velocity transfers on release</li>
+    <li><strong>Friction</strong> &mdash; gradual deceleration</li>
+    <li><strong>Decay</strong> &mdash; exponential deceleration, and target prediction</li>
+    <li><strong>Springs</strong> &mdash; interruptible, state-based animation</li>
+    <li><strong>Fling &amp; snap</strong> &mdash; decay-targeted, critically damped spring to nearest snap point</li>
+    <li><strong>Rubber band</strong> &mdash; elastic resistance at boundaries</li>
+    <li><strong>Bounce-back</strong> &mdash; spring return from overscroll</li>
+  </ul>
+  <p>
+    In the next chapter, we'll see how these primitives combine into
+    <strong>interaction patterns</strong> &mdash; pull-to-refresh,
+    carousels, reorderable lists, and elastic sliders.
+  </p>
+
+  <ChapterNav chapterId="ch2" />
+
+  <script>
+    import '../demos/momentum.js'
+    import '../demos/spring-demo.js'
+    import '../demos/elastic.js'
+    import '../demos/snap-points.js'
+    import '../demos/rubber-band.js'
+    import '../demos/overscroll.js'
+    import '../demos/decay-prediction.js'
+    import { drawMomentumDiagram, drawSpringDiagram, drawSnapDiagram, drawRubberBandDiagram } from '../demos/ch3-diagrams.js'
+    drawMomentumDiagram('dia-momentum')
+    drawSpringDiagram('dia-spring')
+    drawSnapDiagram('dia-snap')
+    drawRubberBandDiagram('dia-rubberband')
+  </script>
+</BaseLayout>

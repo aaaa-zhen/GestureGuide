@@ -1,0 +1,356 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro'
+import ChapterNav from '../../components/ChapterNav.astro'
+import { GESTURE } from '../../engine/render-loop.js'
+
+const SWIPE_DEMO_VELOCITY = 650
+const SWIPE_DEMO_DISTANCE = 60
+const FLING_DEMO_THRESHOLD = 950
+---
+
+<BaseLayout lang="zh" title="Gesture Guide — 手势" breadcrumbLabel="1. 手势" description="触摸手势原语全览：tap、double tap、long press、swipe、drag、fling、pinch/zoom、轴向锁定、速度追踪与手势仲裁。">
+  <p class="byline">第 1 章</p>
+  <h1>手势</h1>
+  <p class="lead">
+    一切触摸交互，都始于手势 &mdash; 系统从手指的运动轨迹中识别特定模式。
+    Tap、Swipe、Drag、Fling、Pinch：每种手势各有判定条件，
+    由时间、位移、速度和指针数量共同界定。
+  </p>
+
+  <div class="section-sep">&middot;&middot;&middot;&middot;&middot;</div>
+
+  <!-- ════ Touch Down ════ -->
+  <h2 id="sec-touchdown">Touch Down（按下）</h2>
+  <p>
+    在系统识别出具体手势之前，有一件更基础的事先要发生：
+    <strong>手指接触屏幕</strong>。这是一切交互的起点。界面应当即刻回应 &mdash;
+    缩放、高亮、颜色变化皆可 &mdash; 以此确认触摸已被接收。
+  </p>
+  <p>
+    这和 Tap 不同。Tap 需要手指快速抬起；而 Touch Down 只有 <em>press</em> 阶段，
+    它应当立即且无条件地触发，无需等待系统判断后续手势类型。
+    若后续发展为拖拽，按下态应平滑过渡；若是 Tap，则在抬手时完成闭环。
+  </p>
+
+  <span class="fig-label">fig-099 &middot; touch down feedback</span>
+  <div class="demo demo-grid" id="demo-touchdown" style="height:180px; cursor:pointer;" tabindex="0" aria-label="Touch down demo — 按下任意位置看涟漪反馈，松开后看绿色反馈">
+    <div class="demo-readout" id="td-readout" aria-live="polite" role="status"></div>
+    <div class="demo-hint" id="hint-td">任意位置点击</div>
+  </div>
+
+  <div class="section-sep">&middot;&middot;&middot;&middot;&middot;</div>
+
+  <!-- ════ Tap ════ -->
+  <h2 id="sec-tap">Tap（单击）</h2>
+  <p>
+    最基础的手势。手指按下后几乎不移动，随即快速抬起。
+    它相当于触摸世界里的鼠标点击，而且常由"没有发生的事"来定义：
+    没有明显位移（小于约 {GESTURE.TOUCH_SLOP}px），没有长时间停留（小于约 {GESTURE.TAP_MAX_MS}ms）。
+  </p>
+
+  <div class="diagram" id="dia-tap-timeline">
+    <div class="diagram-caption">Tap：快速触摸，位移极小</div>
+  </div>
+
+  <span class="fig-label">fig-100 &middot; tap detector</span>
+  <div class="demo demo-grid" id="demo-tap" style="height:160px; cursor:pointer;" tabindex="0" role="button" aria-label="Tap demo — 在区域内点击">
+    <div class="demo-readout" id="tap-readout" aria-live="polite" role="status"></div>
+    <div class="demo-hint" id="hint-tap">任意位置点击</div>
+  </div>
+
+  <div class="section-sep">&middot;&middot;&middot;&middot;&middot;</div>
+
+  <!-- ════ Double Tap ════ -->
+  <h2 id="sec-doubletap">Double Tap（双击）</h2>
+  <p>
+    在接近同一位置连续点击两次。难点在于：系统必须判断 &mdash;
+    第一次点击究竟是"单击本身"，还是"双击的前奏"。经典做法是第一次点击后
+    等待 <strong>{GESTURE.DOUBLE_TAP_MS}ms</strong>：窗口内出现第二次点击，则判定双击；
+    否则触发单击。
+  </p>
+  <p>
+    正因为这个等待窗口，同时支持单击与双击的界面常让人觉得"慢半拍"。
+    更好的策略是：先立即执行单击，若随后检测到双击再做回滚；
+    或者把单击与双击分配到互不冲突的目标上，从根源消除歧义。
+  </p>
+
+  <div class="diagram" id="dia-doubletap-timeline">
+    <div class="diagram-caption">Double tap：在 {GESTURE.DOUBLE_TAP_MS}ms 与 {GESTURE.DOUBLE_TAP_DISTANCE}px 范围内完成两次点击</div>
+  </div>
+
+  <span class="fig-label">fig-101 &middot; single vs double tap</span>
+  <div class="demo demo-grid" id="demo-doubletap" style="height:160px; cursor:pointer;" tabindex="0" role="button" aria-label="Double tap demo — 在区域内点击一次或连续点击两次">
+    <div class="demo-readout" id="dtap-readout" aria-live="polite" role="status"></div>
+    <div class="demo-hint" id="hint-dtap">单击或双击</div>
+  </div>
+
+  <div class="section-sep">&middot;&middot;&middot;&middot;&middot;</div>
+
+  <!-- ════ Long Press ════ -->
+  <h2 id="sec-longpress">Long Press（长按）</h2>
+  <p>
+    手指按下后保持不动。当按住时间达到阈值（通常约 {GESTURE.LONG_PRESS_MS}ms），系统触发长按。
+    这是少数由<strong>时间本身驱动识别</strong>、且手指仍停留在屏幕上的手势。
+  </p>
+  <p>
+    设计关键在于提供<strong>进度反馈</strong> &mdash; 例如触点周围逐步填满的圆环，
+    让用户明确知道"继续按住就会触发动作"。若没有可见反馈，用户只能盯着屏幕
+    猜测系统是否收到了指令。这种"死寂感"是手势设计中最糟糕的体验之一。
+  </p>
+
+  <div class="diagram" id="dia-longpress-timeline">
+    <div class="diagram-caption">Long press：手指未抬起时，计时器到点触发</div>
+  </div>
+
+  <span class="fig-label">fig-102 &middot; long press with progress</span>
+  <div class="demo demo-grid" id="demo-longpress" style="height:160px; cursor:pointer;" tabindex="0" role="button" aria-label="Long press demo — 在区域内按住">
+    <div class="demo-readout" id="lp-readout" aria-live="polite" role="status"></div>
+    <div class="demo-hint" id="hint-lp">按住不放</div>
+  </div>
+
+  <div class="section-sep">&middot;&middot;&middot;&middot;&middot;</div>
+
+  <!-- ════ Swipe ════ -->
+  <h2 id="sec-swipe">Swipe（滑动）</h2>
+  <p>
+    一次快速、方向明确的手指运动 &mdash; 短促、迅捷、果断。
+    Swipe 同时依赖<strong>速度</strong>（抬手瞬间有多快）和
+    <strong>方向</strong>（左、右、上、下）。它不同于慢速拖拽：
+    系统会判断释放速度是否超过阈值（通常 600&ndash;1000 px/s），
+    同时检查主方向上是否有足够位移。
+  </p>
+  <p>
+    这个 demo 故意把两条规则同时展示：当释放速度超过
+    <strong>{SWIPE_DEMO_VELOCITY}px/s</strong>，或水平位移超过
+    <strong>{SWIPE_DEMO_DISTANCE}px</strong> 时就会识别为 Swipe。
+    你可以分别测试“速度”与“位移”对识别结果的影响。
+  </p>
+  <p>
+    Swipe 驱动了大量经典移动交互 &mdash; 通知划走、页面切换、操作露出。
+    识别本身并不复杂：它就是"以清晰方向结束、且速度够快的拖拽"。
+    真正复杂的，是识别之后如何处理（见
+    <a href="/zh/patterns/">Chapter 3</a>）。
+  </p>
+
+  <span class="fig-label">fig-103 &middot; swipe card</span>
+  <div class="demo demo-grid" id="demo-swipe-gesture" style="height:220px; cursor:grab;" tabindex="0" aria-label="Swipe demo — 左右拖动卡片并快速松手触发滑动">
+    <div class="demo-readout" id="swipe-g-readout" aria-live="polite" role="status"></div>
+    <div class="demo-hint" id="hint-swipe-g">拖拽后快速松手</div>
+  </div>
+
+  <div class="section-sep">&middot;&middot;&middot;&middot;&middot;</div>
+
+  <!-- ════ Drag / Pan ════ -->
+  <h2 id="sec-drag">Drag / Pan（拖拽 / 平移）</h2>
+  <p>
+    最基础的连续手势：手指按下、移动，元素跟着走。
+    <strong>1:1 跟手</strong>意味着元素的位移与手指完全一致 &mdash;
+    没有延迟，没有漂移。正是这种直接耦合，让拖拽有种"真被抓住了"的实感。
+  </p>
+  <p>
+    但拖拽不会在按下瞬间就启动。系统会设置一段死区，称为
+    <strong>touch slop</strong>（通常为 {GESTURE.TOUCH_SLOP}px），
+    手指越过它才正式进入拖拽状态。这能避免本想点按或长按时被误判为拖拽。
+  </p>
+  <p>
+    手指释放后，元素会经由弹簧回到静止位。这一步提供了"收口感" &mdash;
+    用户能清晰感知：手势已结束，系统已回到稳定状态。
+  </p>
+
+  <div class="diagram" id="dia-drag">
+    <div class="diagram-caption">Drag：越过 touch slop 后进入 1:1 连续跟手</div>
+  </div>
+
+  <span class="fig-label">fig-104a &middot; 1:1 tracking + velocity transfer</span>
+  <div class="demo demo-grid" id="demo-drag-direct" style="height:180px; cursor:grab;" tabindex="0" aria-label="Direct drag demo — 拖动圆点，松手后继承速度继续运动">
+    <div class="demo-readout" id="drag-direct-readout" aria-live="polite" role="status"></div>
+    <div class="demo-hint" id="hint-drag-direct">拖动后快速松手</div>
+  </div>
+
+  <p>
+    让 1:1 跟手自然的关键，在于<strong>把手指释放时的速度传递给元素</strong>。
+    常见做法是采样最后约 100ms 的移动数据来计算速度，再将其注入弹簧作为初速度。
+    这样元素便会沿拖动方向继续运动，然后平滑收敛到目标位。
+  </p>
+
+  <p>
+    你也可以对比下方的<strong>弹簧延迟跟手</strong>方案：
+    拖动过程中元素会有一点软性滞后，重量感更强，但精确性随之下降。
+  </p>
+
+  <span class="fig-label">fig-104b &middot; spring delay tracking</span>
+  <div class="demo demo-grid" id="demo-drag-spring" style="height:180px; cursor:grab;" tabindex="0" aria-label="Spring drag demo — 拖动圆点，元素以延迟方式跟随">
+    <div class="demo-readout" id="drag-spring-readout" aria-live="polite" role="status"></div>
+    <div class="demo-hint" id="hint-drag-spring">拖动圆点</div>
+  </div>
+
+  <div class="section-sep">&middot;&middot;&middot;&middot;&middot;</div>
+
+  <!-- ════ Axis Lock ════ -->
+  <h2 id="sec-axislock">Axis Lock（轴向锁定）</h2>
+  <p>
+    列表滚动时，你要的通常是纯垂直或纯水平，而非两轴同时漂移。
+    <strong>轴向锁定</strong>会在初始移动阶段判断主方向，随后将后续移动约束到单轴上。
+    斜向抖动因此减少，滚动更精准、更有意图感。
+  </p>
+  <p>
+    一般在手指越过 touch slop 的那一刻做出决定：
+    哪个方向位移更大，就锁定哪个方向；另一方向在本次手势中被抑制。
+    好用的列表滚动之所以像"沿轨道前进"，原因正在于此。
+  </p>
+
+  <div class="diagram" id="dia-axislock">
+    <div class="diagram-caption">Axis lock：初始位移决定 X 或 Y 约束</div>
+  </div>
+
+  <span class="fig-label">fig-105 &middot; axis lock demo</span>
+  <div class="demo demo-grid" id="demo-axislock" style="height:220px; cursor:grab;" tabindex="0" aria-label="Axis lock demo — 拖动圆点后锁定主轴">
+    <div class="demo-readout" id="axislock-readout" aria-live="polite" role="status"></div>
+    <div class="demo-hint" id="hint-axislock">拖动圆点</div>
+  </div>
+
+  <div class="section-sep">&middot;&middot;&middot;&middot;&middot;</div>
+
+  <!-- ════ Pinch / Zoom ════ -->
+  <h2 id="sec-pinch">Pinch / Zoom（捏合缩放）</h2>
+  <p>
+    常见手势里唯一稳定依赖<strong>双指</strong>的类型。两指触屏，分开即放大，
+    靠拢即缩小。缩放比例取自当前两指距离与起始距离的比值 &mdash;
+    比如两指间距翻倍，缩放通常也随之翻倍。
+  </p>
+  <p>
+    系统通过 pointer ID 分别追踪两根手指。双指同时激活时，
+    需实时计算<strong>两指间距</strong>（pinch span）和<strong>中点</strong>（zoom center）。
+    中点至关重要 &mdash; 它决定了缩放围绕哪里发生。
+    你两指之间的点应当尽量"钉"在屏幕上，其余内容围绕它缩放。
+  </p>
+  <p>
+    手指释放时，若当前缩放超出允许区间（过小或过大），
+    弹簧会将其拉回最近合法值 &mdash; 这相当于把 rubber band 思路从"位置"搬到了"缩放值"上。
+    桌面端可用滚轮、右键拖动和键盘快捷键（<code>+</code>/<code>-</code>/<code>0</code>）作为替代输入。
+  </p>
+
+  <span class="fig-label">fig-106 &middot; pinch to zoom</span>
+  <div class="demo demo-grid" id="demo-pinch" style="height:260px;" tabindex="0" aria-label="Pinch demo — 双指缩放；桌面端可用滚轮、右键拖动和键盘">
+    <div class="demo-readout" id="pinch-readout" aria-live="polite" role="status"></div>
+    <div class="demo-hint" id="hint-pinch">滚轮 · 右键拖动 · +/-/0 键</div>
+  </div>
+
+  <div class="section-sep">&middot;&middot;&middot;&middot;&middot;</div>
+
+  <!-- ════ Fling ════ -->
+  <h2 id="sec-fling">Fling（甩动）</h2>
+  <p>
+    当一次拖拽在手指仍高速运动时结束，这次释放就是 <strong>fling</strong>。
+    抬手瞬间的速度直接决定后续行为：速度超过阈值，系统便将其判定为 fling，
+    而非普通释放。
+  </p>
+  <p>
+    Fling 是"手势识别"与"物理系统"之间的桥梁。
+    识别器负责判定是否发生了 fling；物理系统负责处理后续 &mdash;
+    动量滚动、分页吸附，或 dismiss 动画。
+    你甩手那一刻的速度，就是后续动画的初始速度。
+  </p>
+
+  <div class="diagram" id="dia-fling">
+    <div class="diagram-caption">Fling：以高速度结束的拖拽会触发 fling 事件</div>
+  </div>
+
+  <span class="fig-label">fig-107 &middot; fling detector</span>
+  <div class="demo demo-grid" id="demo-fling" style="height:220px; cursor:grab;" tabindex="0" aria-label="Fling demo — 快速拖动圆点并松手，观察甩动识别">
+    <div class="demo-readout" id="fling-readout" aria-live="polite" role="status"></div>
+    <div class="demo-hint" id="hint-fling">快速拖动后松手</div>
+  </div>
+
+  <div class="section-sep">&middot;&middot;&middot;&middot;&middot;</div>
+
+  <!-- ════ Gesture Competition ════ -->
+  <h2 id="sec-arbitration">手势竞争（Gesture arbitration）</h2>
+  <p>
+    这是手势系统最根本的挑战：<strong>tap、long press 和 drag 都从同一个动作开始</strong>
+    &mdash; finger down。系统无法未卜先知，只能等待、观察、再决策。
+  </p>
+  <p>
+    这就是 <strong>gesture arbitration</strong>（手势仲裁）。
+    手指落下的瞬间，多个识别器同时进入竞争。谁先满足触发条件，谁胜出：
+  </p>
+  <ul class="note-list">
+    <li><strong>手指移动超过约 {GESTURE.TOUCH_SLOP}px</strong> &rarr; 判定为拖拽（速度足够高时可进入 swipe）。同时取消 long-press 计时器。</li>
+    <li><strong>手指快速抬起</strong> &rarr; 判定为 tap。取消 long-press 计时器。</li>
+    <li><strong>{GESTURE.LONG_PRESS_MS}ms 内几乎无位移</strong> &rarr; 判定为 long press。</li>
+  </ul>
+  <p>
+    在下方试试：快速点按、按住不动、或按下后拖动。观察状态徽章的变化，
+    看最终是哪个识别器赢得仲裁。
+  </p>
+
+  <div class="diagram" id="dia-arbitration">
+    <div class="diagram-caption">Gesture arbitration：从 PRESSED 状态分流的三条出口</div>
+  </div>
+
+  <span class="fig-label">fig-109 &middot; recognizer arena</span>
+  <div class="state-badges" id="arena-states">
+    <span class="state-badge" id="badge-idle">idle</span>
+    <span class="state-badge" id="badge-pressed">pressed</span>
+    <span class="state-badge" id="badge-tap">tap</span>
+    <span class="state-badge" id="badge-longpress">long press</span>
+    <span class="state-badge" id="badge-drag">drag</span>
+  </div>
+  <div class="demo demo-grid" id="demo-arena" style="height:220px; cursor:pointer;" tabindex="0" aria-label="Gesture arbitration demo — 点击、按住或拖动，观察哪个手势胜出">
+    <div class="box box-orange" id="arena-box" style="pointer-events:none;"></div>
+    <svg class="progress-ring" id="arena-ring" width="84" height="84" style="pointer-events:none;">
+      <circle class="track" cx="42" cy="42" r="38"/>
+      <circle class="fill" id="arena-ring-fill" cx="42" cy="42" r="38"/>
+    </svg>
+    <div class="demo-readout" id="arena-readout" aria-live="polite" role="status"></div>
+    <div class="demo-hint" id="hint-arena">点击、按住或拖动</div>
+  </div>
+
+  <div class="section-sep">&middot;&middot;&middot;&middot;&middot;</div>
+
+  <!-- ════ Chapter Summary ════ -->
+  <h2 id="sec-summary">综合起来看</h2>
+  <p>
+    所有手势都源自同一组原始输入：<strong>pointer down、move、up</strong>。
+    区分它们的，是时间、位移、速度和指针数量的不同组合：
+  </p>
+  <ul class="note-list">
+    <li><strong>Tap</strong> &mdash; 在 {GESTURE.TAP_MAX_MS}ms 内快速按下抬起，位移很小</li>
+    <li><strong>Double tap</strong> &mdash; 两次点击间隔小于约 {GESTURE.DOUBLE_TAP_MS}ms</li>
+    <li><strong>Long press</strong> &mdash; 基本不移动地按住约 {GESTURE.LONG_PRESS_MS}ms</li>
+    <li><strong>Drag</strong> &mdash; 位移超过 touch slop（约 {GESTURE.TOUCH_SLOP}px），进入 1:1 跟手</li>
+    <li><strong>Swipe</strong> &mdash; 方向明确且速度快（本 demo 中 &gt;{SWIPE_DEMO_VELOCITY}px/s 或位移 &gt;{SWIPE_DEMO_DISTANCE}px）</li>
+    <li><strong>Fling</strong> &mdash; 以高速度释放拖拽（&gt;{FLING_DEMO_THRESHOLD} px/s）</li>
+    <li><strong>Pinch / Zoom</strong> &mdash; 双指距离变化映射缩放比例</li>
+  </ul>
+  <p>
+    这些原语，组合起来便是你每天都在使用的触摸交互 &mdash; 滚动、关闭、缩放、选择。
+    下一章我们将进入 <strong>物理手感</strong>：动量、弹簧、回弹，
+    以及把原始输入变成"有温度的运动"的数学机制。
+  </p>
+
+  <ChapterNav lang="zh" chapterId="ch1" />
+
+  <script>
+    import '../../demos/touch-down.js'
+    import '../../demos/tap.js'
+    import '../../demos/double-tap.js'
+    import '../../demos/long-press.js'
+    import '../../demos/swipe-gesture.js'
+    import '../../demos/drag-direct.js'
+    import '../../demos/drag-spring.js'
+    import '../../demos/axis-lock.js'
+    import '../../demos/fling.js'
+    import '../../demos/pinch-zoom.js'
+    import '../../demos/recognizer-arena.js'
+    import { drawTapTimeline, drawDoubleTapTimeline, drawLongPressTimeline, drawArbitrationDiagram } from '../../demos/diagrams.js'
+    import { drawDragDiagram, drawAxisLockDiagram, drawFlingDiagram } from '../../demos/ch2-diagrams.js'
+    drawTapTimeline('dia-tap-timeline')
+    drawDoubleTapTimeline('dia-doubletap-timeline')
+    drawLongPressTimeline('dia-longpress-timeline')
+    drawDragDiagram('dia-drag')
+    drawAxisLockDiagram('dia-axislock')
+    drawFlingDiagram('dia-fling')
+    drawArbitrationDiagram('dia-arbitration')
+  </script>
+</BaseLayout>

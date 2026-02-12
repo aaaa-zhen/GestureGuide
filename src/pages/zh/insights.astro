@@ -1,0 +1,164 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro'
+import ChapterNav from '../../components/ChapterNav.astro'
+---
+
+<BaseLayout lang="zh" title="Gesture Guide — 设计洞察" breadcrumbLabel="4. 设计洞察" description="手势界面的关键设计决策：空间一致性、交互频率、触摸可见性、可发现性与可访问性。">
+  <p class="byline">第 4 章</p>
+  <h1>设计洞察</h1>
+  <p class="lead">
+    优秀的交互，不只靠一个手势或一组物理参数就能撑起来。
+    它还需要更高层的设计判断：空间一致性、何时该动效何时该克制、
+    如何让手势更容易被发现，以及如何让触摸界面对更多人可用。
+  </p>
+
+  <div class="section-sep">&middot;&middot;&middot;&middot;&middot;</div>
+
+  <!-- ════ Spatial Consistency ════ -->
+  <h2 id="sec-spatial">空间一致性</h2>
+  <p>
+    动效应当传达<strong>元素从哪里来、要去哪里</strong>。
+    比如在 iOS 里上滑关闭 App，窗口会朝 dock 图标方向缩回；
+    点开通知时，内容像从通知条中展开。这种空间关系帮助用户建立起
+    "这个内容在界面空间里住在哪"的心智模型。
+  </p>
+  <p>
+    原则是：<strong>动效本身就是信息</strong>。从右侧滑入，意味着它来自右侧；
+    底部上弹的 sheet，意味着它是覆盖在上层的一层。若同一元素始终从同一方向进出，
+    用户便会积累空间记忆，导航成本随之显著下降。
+    Apple 在 WWDC 2018 的 Designing Fluid Interfaces 中也强调了这一点：
+    交互动效必须维护空间连续性，而非只做"装饰性运动"。
+  </p>
+
+  <div class="section-sep">&middot;&middot;&middot;&middot;&middot;</div>
+
+  <!-- ════ Frequency & Novelty ════ -->
+  <h2 id="sec-frequency">频率与新鲜感</h2>
+  <p>
+    设计师很容易本能地"什么都想加动画"。保持对象恒常、引导视觉焦点、提升愉悦感 &mdash;
+    都是合理的理由。但真正难的，是判断<strong>什么时候不该动画</strong>。
+  </p>
+  <p>
+    一条实用原则：<strong>交互频率与动效新鲜感成反比</strong>。
+    高频操作（命令菜单、切 tab、输入）应接近瞬时完成；
+    低频关键时刻（首次引导、完成购买、解锁成就）才值得更完整的动效表达。
+    比如 macOS 的右键菜单几乎不做动画 &mdash; 因为它每天会被调用成千上万次，
+    新鲜感早已归零。
+  </p>
+
+  <div class="section-sep">&middot;&middot;&middot;&middot;&middot;</div>
+
+  <!-- ════ Touch Visibility ════ -->
+  <h2 id="sec-visibility">触摸内容可见性</h2>
+  <p>
+    触摸界面中，手指会遮住下方内容。这是桌面端几乎不存在的挑战 &mdash;
+    鼠标指针不过是个小箭头，而拇指会覆盖相当大一片屏幕区域。
+  </p>
+  <p>
+    好的触摸界面会专门应对这件事。比如移动文本光标时，
+    通过临时放大镜或偏移预览，让目标即使在手指遮挡下仍然清晰可见。
+  </p>
+  <p>
+    对滑杆和拖拽条而言：当手指短暂偏离轨道，拖动不应被取消。
+    用户一旦"抓住"了手柄，就应能自由移动手指并持续控制数值。
+    这正是 pointer capture 要解决的问题。
+    核心洞察在于：<strong>交互承诺一经建立便应持续，不应依赖手指始终贴在目标上</strong>。
+    <a href="/zh/patterns/#sec-rubber-slider">Chapter 3</a> 的橡皮筋滑杆就演示了这一点：
+    即使拖出轨道，控件仍通过形变反馈边界，而非直接失效。
+  </p>
+
+  <div class="section-sep">&middot;&middot;&middot;&middot;&middot;</div>
+
+  <!-- ════ Discoverability ════ -->
+  <h2 id="sec-discoverability">可发现性</h2>
+  <p>
+    隐藏手势本身就是可用性风险。用户不知道有这个手势，它在体验上便等于不存在。
+    更稳妥的做法，是用<strong>渐进式揭示</strong>来引导：
+  </p>
+  <ul class="note-list">
+    <li><strong>视觉可供性</strong> &mdash; 边缘轻微露出提示"可继续滑动"；sheet 顶部把手暗示"可拖拽"。</li>
+    <li><strong>一致隐喻</strong> &mdash; 用户学会某处"上滑关闭"后，应能迁移到所有相似对象。复用隐喻能显著降低学习成本。</li>
+    <li><strong>可见替代路径</strong> &mdash; 每个手势都应有可见的替代入口。比如"滑动删除"也应在详情页提供删除按钮。不是所有人都能发现手势，也不是所有人都能执行手势。</li>
+  </ul>
+
+  <div class="section-sep">&middot;&middot;&middot;&middot;&middot;</div>
+
+  <!-- ════ Accessibility ════ -->
+  <h2 id="sec-a11y">可访问性</h2>
+  <p>
+    触摸手势天然依赖视觉和空间操作能力：需要看见目标、够到目标、并完成协调动作。
+    并非所有用户都具备这些条件。可访问的手势设计意味着：
+    必须提供<strong>等价的替代路径</strong>。
+  </p>
+
+  <h3>Reduced motion（减少动态）</h3>
+  <p>
+    有眩晕或晕动症风险的用户，可能会开启系统的"减少动态"偏好。
+    该偏好生效时，弹簧类动画应尽量直接收敛到目标位。
+    交互功能不变 &mdash; 只是跳过了运动过程。
+  </p>
+
+  <h3>Alternative paths（移动端优先）</h3>
+  <p>
+    如果产品主要面向移动端、以手势为核心交互方式，不必为每个动作都维护键盘映射表。
+    但关键任务仍需可见的替代路径（删除、关闭、确认、撤销等），
+    避免出现"只有手势才能完成"的单一通道。
+  </p>
+
+  <h3>触摸目标尺寸</h3>
+  <p>
+    推荐最小触摸目标为 <strong>44 &times; 44 像素</strong>（Apple）
+    或 <strong>48 &times; 48dp</strong>（Material Design）。
+    即便视觉元素更小，实际命中区域也应满足此下限。
+    目标过小会提高所有人的误触率，对运动能力受限的用户影响尤甚。
+  </p>
+
+  <div class="term-box">
+    <p><strong>手势界面的无障碍检查清单：</strong></p>
+    <ul class="note-list" style="margin-bottom:0;">
+      <li>关键手势操作都有可见按钮替代路径</li>
+      <li>动效遵守用户的 reduced-motion 偏好</li>
+      <li>状态变化会被屏幕阅读器播报</li>
+      <li>触摸区域至少 44 &times; 44px</li>
+      <li>滑动类操作有可见替代按钮</li>
+      <li>颜色不是传达状态的唯一方式</li>
+    </ul>
+  </div>
+
+  <div class="section-sep">&middot;&middot;&middot;&middot;&middot;</div>
+
+  <!-- ════ References ════ -->
+  <h2 id="sec-references">参考资料</h2>
+  <ul class="reference-list">
+    <li>
+      <a href="https://developer.apple.com/fr/videos/play/wwdc2018/803/" target="_blank" rel="noopener">
+        Designing Fluid Interfaces</a> &mdash; Apple WWDC 2018。系统讲解了手势界面的核心原则：动量、橡皮筋与可中断动画。
+    </li>
+    <li>
+      <a href="https://chenglou.me/demo_drag/" target="_blank" rel="noopener">
+        Chenglou Drag Demo</a> &mdash; Cheng Lou。展示了可拖拽卡片、弹簧物理、直接操控，以及启发本项目的 render-loop 架构。
+        本项目中使用的固定时间步长 spring stepper（<code>F = -kx - bv</code>）与事件收集模式也源于此。
+    </li>
+    <li>
+      <a href="https://rauno.me/craft/interaction-design" target="_blank" rel="noopener">
+        Interaction Design</a> &mdash; Rauno Freiberg。围绕交互动效与反馈机制的原则和实践。
+    </li>
+  </ul>
+
+  <style is:global>
+    .reference-list {
+      list-style: none;
+      padding: 0;
+    }
+    .reference-list li {
+      margin-bottom: 16px;
+      line-height: 1.7;
+    }
+    .reference-list a {
+      font-weight: 600;
+    }
+  </style>
+
+  <ChapterNav lang="zh" chapterId="ch4" />
+
+</BaseLayout>

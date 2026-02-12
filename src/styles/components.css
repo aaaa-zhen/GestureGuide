@@ -1,0 +1,180 @@
+/* ── Component Styles ── */
+
+/* ── Flow diagram ── */
+.flow {
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  color: var(--fg-secondary);
+  line-height: 2;
+  padding: 20px 24px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow-x: auto;
+  margin-bottom: var(--space-sm);
+}
+
+.flow b {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* ── Term box (definition highlight) ── */
+.term-box {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 8px;
+  padding: 16px 20px;
+  margin: var(--space-md) 0 var(--space-lg);
+  font-size: 0.94rem;
+  color: var(--fg-secondary);
+}
+
+.term-box p:last-child {
+  margin-bottom: 0;
+}
+
+.term-box code {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+/* ── Mini table ── */
+.mini-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: var(--space-md) 0 var(--space-lg);
+  font-size: 0.9rem;
+}
+
+.mini-table th,
+.mini-table td {
+  border: 1px solid var(--border);
+  padding: 10px 14px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.mini-table th {
+  background: var(--surface);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+}
+
+.mini-table td {
+  color: var(--fg-secondary);
+}
+
+.mini-table td code {
+  font-size: 0.84em;
+}
+
+/* ── State machine row ── */
+.state-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: var(--space-md) 0 var(--space-lg);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+}
+
+.state-node {
+  padding: 7px 14px;
+  border-radius: 6px;
+  font-weight: 600;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--fg-secondary);
+}
+
+.state-node.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-light);
+}
+
+.state-arrow {
+  color: var(--fg-muted);
+  font-size: 0.85rem;
+}
+
+.state-edge-label {
+  font-size: 0.58rem;
+  color: var(--fg-muted);
+}
+
+/* ── Diagrams ── */
+.diagram {
+  margin: var(--space-lg) 0;
+}
+
+.diagram svg {
+  width: 100%;
+  height: auto;
+}
+
+.diagram-caption {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  color: var(--fg-muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-top: var(--space-sm);
+  text-align: center;
+}
+
+/* ── Note list ── */
+.note-list {
+  margin: var(--space-sm) 0 var(--space-lg) 20px;
+  color: var(--fg-secondary);
+  list-style: disc;
+}
+
+.note-list li {
+  margin-bottom: 6px;
+}
+
+/* ── Footer ── */
+.footer {
+  margin-top: var(--space-2xl);
+  padding: var(--space-lg) 0;
+  border-top: 1px solid var(--border);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--fg-muted);
+  text-align: center;
+}
+
+/* ── Event log (pointer logger demo) ── */
+.event-log {
+  position: absolute;
+  top: 12px;
+  right: 16px;
+  bottom: 12px;
+  width: 220px;
+  overflow-y: auto;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  line-height: 1.6;
+  color: var(--fg-muted);
+  scrollbar-width: thin;
+}
+
+.event-log-entry {
+  padding: 2px 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.event-log-entry .ev-type {
+  font-weight: 600;
+}
+
+.event-log-entry.ev-down .ev-type { color: var(--demo-red); }
+.event-log-entry.ev-move .ev-type { color: var(--demo-blue); }
+.event-log-entry.ev-up .ev-type { color: var(--demo-green); }
+.event-log-entry.ev-cancel .ev-type { color: var(--demo-orange); }

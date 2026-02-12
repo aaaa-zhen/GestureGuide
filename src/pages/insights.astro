@@ -1,0 +1,174 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro'
+import ChapterNav from '../components/ChapterNav.astro'
+---
+
+<BaseLayout title="Gesture Guide — Design Insights" breadcrumbLabel="4. Design Insights" description="Design decisions for gesture interfaces: spatial consistency, interaction frequency, touch visibility, discoverability, and accessibility.">
+  <p class="byline">Chapter 4</p>
+  <h1>Design Insights</h1>
+  <p class="lead">
+    Beyond individual gestures and physics, great interaction design requires understanding
+    higher-level principles: spatial consistency, when to animate and when not to,
+    how to make gestures discoverable, and how to make touch interfaces accessible to everyone.
+  </p>
+
+  <div class="section-sep">&middot;&middot;&middot;&middot;&middot;</div>
+
+  <!-- ════ Spatial Consistency ════ -->
+  <h2 id="sec-spatial">Spatial consistency</h2>
+  <p>
+    Motion should communicate <strong>where things come from and where they go</strong>.
+    When you swipe up to dismiss an app on iOS, the app shrinks back toward its icon in the
+    dock. When you tap a notification, the content expands from the banner. This spatial
+    relationship creates a mental model of where things &ldquo;live&rdquo; in the interface.
+  </p>
+  <p>
+    The principle: <strong>motion is information</strong>. An element sliding in from the right
+    tells you it came from the right. A sheet sliding up tells you it's a layer on top. When
+    the same element always arrives from the same direction, users build spatial memory that
+    makes navigation feel effortless.
+  </p>
+
+  <div class="section-sep">&middot;&middot;&middot;&middot;&middot;</div>
+
+  <!-- ════ Frequency & Novelty ════ -->
+  <h2 id="sec-frequency">Frequency &amp; novelty</h2>
+  <p>
+    As a designer, the instinct is to animate everything. Object permanence, creating a focal
+    point, and delight are all good reasons. But it's less obvious <strong>when not to animate</strong>.
+  </p>
+  <p>
+    The principle: <strong>animation frequency and novelty are inversely related</strong>.
+    High-frequency interactions (command menus, tab switching, typing) should be instantaneous.
+    Low-frequency interactions (first-time onboarding, completing a purchase, achievement
+    unlocks) deserve a flourish. Context menus on macOS appear without animation &mdash;
+    used thousands of times a day, with very low novelty.
+  </p>
+
+  <div class="section-sep">&middot;&middot;&middot;&middot;&middot;</div>
+
+  <!-- ════ Touch Visibility ════ -->
+  <h2 id="sec-visibility">Touch content visibility</h2>
+  <p>
+    On touch interfaces, your finger can obfuscate what's happening underneath it. This is
+    a fundamental challenge that desktop interfaces don't face &mdash; a mouse cursor is a
+    tiny arrow, but a thumb covers a large area of the screen.
+  </p>
+  <p>
+    Well-designed interfaces account for this. When you press and drag to move the text caret
+    on touch interfaces, temporary magnification or an offset preview can keep the target
+    visible while your finger is still covering the original position.
+  </p>
+  <p>
+    For sliders and scrubbers: the dragging gesture should not cancel when the finger moves
+    away from the track. Once the user has grabbed the handle, they should be able to move
+    their finger freely while still controlling the value. This is what pointer capture solves &mdash;
+    but the design insight is that <strong>commitment to an interaction should outlast
+    physical proximity to its target</strong>. The rubber band slider in
+    <a href="/patterns/#sec-rubber-slider">Chapter 3</a> demonstrates this: dragging past
+    the track&rsquo;s bounds deforms the control itself, communicating the boundary through
+    shape rather than just stopping the value.
+  </p>
+
+  <div class="section-sep">&middot;&middot;&middot;&middot;&middot;</div>
+
+  <!-- ════ Discoverability ════ -->
+  <h2 id="sec-discoverability">Discoverability</h2>
+  <p>
+    Hidden gestures are a usability problem. If a user doesn't know a gesture exists, it
+    effectively doesn't exist for them. The best touch interfaces teach gestures through
+    <strong>progressive disclosure</strong>:
+  </p>
+  <ul class="note-list">
+    <li><strong>Visual affordances</strong> &mdash; a slight peek of content at the edge hints that swiping reveals more. A handle bar on a sheet suggests it can be dragged.</li>
+    <li><strong>Consistent metaphors</strong> &mdash; once you learn that swiping up dismisses one thing, you can predict it works on similar things. Reuse reduces the learning burden.</li>
+    <li><strong>Fallback paths</strong> &mdash; every gesture should have a visible alternative. A swipe-to-delete row should also have a delete button in the detail view. Not everyone discovers gestures; not everyone can perform them.</li>
+  </ul>
+
+  <div class="section-sep">&middot;&middot;&middot;&middot;&middot;</div>
+
+  <!-- ════ Accessibility ════ -->
+  <h2 id="sec-a11y">Accessibility</h2>
+  <p>
+    Touch gestures are inherently visual and spatial &mdash; they require seeing the target,
+    reaching it, and performing a coordinated movement. Not all users can do this.
+    Accessible gesture design means providing <strong>equivalent alternatives</strong>
+    for everyone.
+  </p>
+
+  <h3>Reduced motion</h3>
+  <p>
+    Users who experience vestibular disorders or motion sickness can enable a system preference
+    that requests reduced animation. When this is active, spring animations should snap instantly
+    to their destination. The interaction still works &mdash; everything arrives where it should &mdash;
+    it just skips the journey.
+  </p>
+
+  <h3>Alternative Paths (Mobile-first)</h3>
+  <p>
+    If your product is primarily mobile and gesture-driven, you don't need a keyboard mapping
+    table for every interaction. What still matters is visible fallback paths for critical
+    actions (delete, close, confirm, undo), so no task is gesture-only.
+  </p>
+
+  <h3>Touch target sizes</h3>
+  <p>
+    The minimum recommended touch target is <strong>44 &times; 44 pixels</strong> (Apple)
+    or <strong>48 &times; 48dp</strong> (Material Design). Even if the visual element is
+    smaller, the hit area should meet the minimum. Smaller targets increase error rates for
+    everyone, especially users with motor impairments.
+  </p>
+
+  <div class="term-box">
+    <p><strong>Accessibility checklist for gesture interfaces:</strong></p>
+    <ul class="note-list" style="margin-bottom:0;">
+      <li>Critical gesture actions have visible button alternatives</li>
+      <li>Animations respect the user's reduced-motion preference</li>
+      <li>State changes are announced to screen readers</li>
+      <li>Touch targets are at least 44 &times; 44px</li>
+      <li>Swipe actions have visible alternative buttons</li>
+      <li>Color is not the only way to communicate state</li>
+    </ul>
+  </div>
+
+  <div class="section-sep">&middot;&middot;&middot;&middot;&middot;</div>
+
+  <!-- ════ References ════ -->
+  <h2 id="sec-references">References</h2>
+  <ul class="reference-list">
+    <li>
+      <a href="https://developer.apple.com/fr/videos/play/wwdc2018/803/" target="_blank" rel="noopener">
+        Designing Fluid Interfaces</a> &mdash; WWDC 2018, Apple. The talk that defines the principles
+        behind gesture-driven interfaces: momentum, rubber banding, and interruptible animations.
+    </li>
+    <li>
+      <a href="https://chenglou.me/demo_drag/" target="_blank" rel="noopener">
+        Chenglou Drag Demo</a> &mdash; Cheng Lou. Draggable cards with spring physics, direct
+        manipulation, and the render-loop architecture that inspired this project. The fixed-timestep
+        spring stepper (<code>F = -kx - bv</code>) and event-collection pattern used throughout
+        our demos originate here.
+    </li>
+    <li>
+      <a href="https://rauno.me/craft/interaction-design" target="_blank" rel="noopener">
+        Interaction Design</a> &mdash; Rauno Freiberg. Principles and craft behind
+        thoughtful interaction design, with detailed explorations of motion and feedback.
+    </li>
+  </ul>
+
+  <style is:global>
+    .reference-list {
+      list-style: none;
+      padding: 0;
+    }
+    .reference-list li {
+      margin-bottom: 16px;
+      line-height: 1.7;
+    }
+    .reference-list a {
+      font-weight: 600;
+    }
+  </style>
+
+  <ChapterNav chapterId="ch4" />
+
+</BaseLayout>

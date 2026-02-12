@@ -1,0 +1,252 @@
+/* ── Selection ── */
+::selection {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--fg);
+}
+
+/* ── Typography ── */
+
+h1 {
+  font-family: var(--font-serif);
+  font-size: 2.6rem;
+  font-weight: 700;
+  line-height: 1.12;
+  color: var(--fg);
+  margin-bottom: var(--space-md);
+  letter-spacing: -0.01em;
+}
+
+h2 {
+  font-family: var(--font-serif);
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--fg);
+  margin-top: var(--space-2xl);
+  margin-bottom: var(--space-sm);
+}
+
+h3 {
+  font-family: var(--font-serif);
+  font-size: 1.1rem;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--fg);
+  margin-top: var(--space-lg);
+  margin-bottom: var(--space-sm);
+}
+
+p {
+  font-size: 1.06rem;
+  color: var(--fg-secondary);
+  margin-bottom: var(--space-md);
+  text-align: left;
+}
+
+p strong {
+  color: var(--fg);
+  font-weight: 600;
+}
+
+p em {
+  color: var(--fg);
+}
+
+.lead {
+  font-size: 1.15rem;
+  color: var(--fg-secondary);
+  line-height: 1.8;
+  margin-bottom: var(--space-xl);
+}
+
+.byline {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--fg-muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: var(--space-xl);
+}
+
+/* ── Chinese font override ── */
+:lang(zh) h1,
+:lang(zh) h2,
+:lang(zh) h3,
+:lang(zh) .part-title {
+  font-family: var(--font-serif-zh);
+}
+
+:lang(zh) body {
+  font-family: var(--font-serif-zh);
+}
+
+:lang(zh) p,
+:lang(zh) li,
+:lang(zh) .lead,
+:lang(zh) .part-intro,
+:lang(zh) .term-box {
+  font-family: var(--font-serif-zh);
+}
+
+/* ── Links ── */
+.article a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--accent) 30%, transparent);
+  text-underline-offset: 2px;
+  transition: text-decoration-color 0.15s;
+}
+
+.article a:hover {
+  text-decoration-color: var(--accent);
+}
+
+/* ── Lists ── */
+.article ul,
+.article ol {
+  margin: 0 0 var(--space-md) 20px;
+  color: var(--fg-secondary);
+}
+
+.article ul {
+  list-style: disc;
+}
+
+.article ol {
+  list-style: decimal;
+}
+
+.article li {
+  margin-bottom: var(--space-xs);
+}
+
+.article li strong {
+  color: var(--fg);
+}
+
+/* ── Code ── */
+code {
+  font-family: var(--font-mono);
+  font-size: 0.88em;
+}
+
+p code, li code {
+  background: var(--surface);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.84em;
+  color: var(--fg);
+}
+
+pre {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 20px 24px;
+  overflow-x: auto;
+  margin: var(--space-md) 0 var(--space-lg);
+  font-size: 0.8rem;
+  line-height: 1.7;
+}
+
+pre code {
+  background: none;
+  padding: 0;
+  border-radius: 0;
+  font-size: inherit;
+  color: #333;
+}
+
+/* Syntax highlight classes */
+.c { color: #999; }   /* comment */
+.k { color: #2b5ce6; } /* keyword */
+.n { color: #b35000; } /* number */
+.s { color: #27ae60; } /* string */
+
+/* ── Section separator ── */
+.section-sep {
+  text-align: center;
+  color: var(--border);
+  margin: var(--space-md) 0;
+  font-size: 0.9rem;
+  letter-spacing: 0.3em;
+}
+
+/* ── Figure label ── */
+.fig-label {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--fg-muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+/* ── Chapter navigation (prev/next) ── */
+.chapter-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: var(--space-xl);
+  padding-top: var(--space-md);
+  border-top: 1px solid var(--border);
+}
+
+.chapter-nav a {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.chapter-nav a:hover {
+  color: var(--fg);
+}
+
+.chapter-nav .nav-next {
+  margin-left: auto;
+  text-align: right;
+}
+
+.chapter-nav .nav-prev {
+  text-align: left;
+}
+
+.chapter-nav .nav-label {
+  display: block;
+  font-size: 0.6rem;
+  color: var(--fg-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 2px;
+}
+
+/* ── Part headers (for multi-part chapters) ── */
+.part-label {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--accent);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 0;
+  margin-top: var(--space-xl);
+}
+
+.part-title {
+  font-family: var(--font-serif);
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--fg);
+  margin-top: var(--space-xs);
+  margin-bottom: var(--space-sm);
+}
+
+.part-intro {
+  font-size: 1.05rem;
+  color: var(--fg-muted);
+  font-style: italic;
+  margin-bottom: var(--space-md);
+}

@@ -1,0 +1,223 @@
+/* ── Responsive ── */
+
+/* Tablet: sidebar collapses */
+@media (max-width: 1100px) {
+  .layout {
+    display: block;
+  }
+
+  .sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+    z-index: 25;
+  }
+
+  .sidebar.open {
+    transform: translateX(0);
+  }
+
+  .mobile-nav-toggle {
+    display: flex;
+  }
+
+  .content-region {
+    margin-left: 0;
+  }
+
+  .breadcrumb {
+    padding-left: 52px;
+  }
+
+  .article {
+    padding-left: 48px;
+    padding-right: 48px;
+    max-width: 780px;
+    margin: 0 auto;
+  }
+}
+
+/* Small tablet */
+@media (max-width: 768px) {
+  :root {
+    --content-padding: 24px;
+    --space-3xl: 48px;
+  }
+
+  #rope-toggle {
+    right: 24px;
+  }
+
+  h1 {
+    font-size: 2rem;
+  }
+
+  h2 {
+    font-size: 1.3rem;
+  }
+
+  .article {
+    padding: 56px 28px 120px;
+  }
+
+  .breadcrumb {
+    padding-left: 52px;
+    padding-right: 16px;
+  }
+
+  /* Demos adapt */
+  .demo {
+    margin-left: -4px;
+    margin-right: -4px;
+    border-radius: 6px;
+  }
+
+  .demo-controls {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  /* Event log stacks below readout on small screens */
+  .event-log {
+    position: relative;
+    top: auto;
+    right: auto;
+    bottom: auto;
+    width: 100%;
+    max-height: 120px;
+    border-top: 1px solid var(--border);
+    padding: 8px 12px;
+  }
+
+  .mini-table {
+    font-size: 0.82rem;
+  }
+
+  .mini-table th,
+  .mini-table td {
+    padding: 8px 10px;
+  }
+
+  /* State badges wrap nicely */
+  .state-badges {
+    gap: 4px;
+  }
+
+  .state-badge {
+    font-size: 0.56rem;
+    padding: 3px 8px;
+  }
+
+  /* Flow diagram */
+  .flow {
+    font-size: 0.68rem;
+    padding: 16px 18px;
+  }
+
+  /* Code blocks */
+  pre {
+    padding: 16px 18px;
+    font-size: 0.74rem;
+  }
+
+  /* Diagram SVGs scale */
+  .diagram svg {
+    max-width: 100%;
+    height: auto;
+  }
+}
+
+/* Phone */
+@media (max-width: 480px) {
+  :root {
+    --content-padding: 16px;
+  }
+
+  #rope-toggle {
+    right: 16px;
+  }
+
+  h1 {
+    font-size: 1.7rem;
+  }
+
+  h2 {
+    font-size: 1.15rem;
+  }
+
+  .article {
+    padding: 40px 18px 100px;
+  }
+
+  .breadcrumb {
+    font-size: 0.65rem;
+    padding-left: 48px;
+  }
+
+  .lead {
+    font-size: 1.05rem;
+  }
+
+  p {
+    font-size: 1rem;
+  }
+
+  pre {
+    padding: 14px 14px;
+    font-size: 0.72rem;
+    border-radius: 6px;
+  }
+
+  .demo-readout {
+    font-size: 0.6rem;
+  }
+
+  .demo-hint {
+    font-size: 0.58rem;
+  }
+
+  .mini-table th,
+  .mini-table td {
+    padding: 6px 8px;
+    font-size: 0.78rem;
+  }
+
+  .fig-label {
+    font-size: 0.6rem;
+  }
+
+  .note-list {
+    margin-left: 16px;
+    font-size: 0.95rem;
+  }
+}
+
+/* ── Focus visible styles for keyboard navigation ── */
+.demo:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.state-badge:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.sidebar-group a:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  border-radius: 2px;
+}
+
+.breadcrumb a:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.mobile-nav-toggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}

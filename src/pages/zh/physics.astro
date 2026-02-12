@@ -1,0 +1,381 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro'
+import ChapterNav from '../../components/ChapterNav.astro'
+---
+
+<BaseLayout lang="zh" title="Gesture Guide — 物理手感" breadcrumbLabel="2. 物理手感" description="动量滚动、弹簧动画、吸附点、橡皮筋超滚动与回弹：让手势自然的物理机制。">
+  <p class="byline">第 2 章</p>
+  <h1>物理手感</h1>
+  <p class="lead">
+    手指抬起后会发生什么？后续的一切运动，都由物理系统接管 &mdash;
+    动量、摩擦、弹簧、弹性边界。正是这些看不见的力，
+    让手势驱动的界面显得自然而鲜活。
+  </p>
+
+  <div class="section-sep">&middot;&middot;&middot;&middot;&middot;</div>
+
+  <!-- ════════════════════════════════════════════════════════════════════════ -->
+  <!-- PART A: AFTER RELEASE                                                    -->
+  <!-- ════════════════════════════════════════════════════════════════════════ -->
+
+  <p class="part-label">Part A · 抬手后阶段</p>
+  <h2 class="part-title">抬手之后</h2>
+  <p class="part-intro">
+    手指离开屏幕的瞬间，速度不会凭空消失 &mdash; 它传递给了内容。
+    理解动量、摩擦与衰减预测，是打造"物理上可信"的交互手感的基础。
+  </p>
+
+  <div class="section-sep">&middot;&middot;&middot;&middot;&middot;</div>
+
+  <!-- ════ Momentum / Inertia ════ -->
+  <h2 id="sec-momentum">Momentum（动量）</h2>
+  <p>
+    你甩动手机里的列表时，列表不会在抬手瞬间戛然而止，
+    而是继续滑行，仿佛带着惯性。这就是 <strong>momentum scrolling</strong> &mdash;
+    释放瞬间采样到的速度，被完整地带入了后续运动。
+  </p>
+  <p>
+    没有动量，每次滚动都像在泥里拖行。加入动量后，
+    一次轻快的 flick 就能把内容送到更符合预期的位置。
+  </p>
+
+  <div class="diagram" id="dia-momentum">
+    <div class="diagram-caption">Momentum：手指抬起后速度仍会继续演化</div>
+  </div>
+
+  <span class="fig-label">fig-200 &middot; momentum scroll</span>
+  <div class="demo demo-grid" id="demo-momentum" style="height:260px;" tabindex="0" aria-label="Momentum demo — 上下拖动并甩动数字滚轮">
+    <div class="lp-shell">
+      <div class="lp-track" id="momentum-wheel"></div>
+    </div>
+    <div class="vel-bar" id="momentum-vel-bar" aria-hidden="true">
+      <div class="vel-bar-inner" id="momentum-vel-inner"></div>
+    </div>
+    <div class="demo-readout" id="momentum-readout" aria-live="polite" role="status"></div>
+    <div class="demo-hint" id="hint-momentum">上下拖动</div>
+  </div>
+
+  <div class="section-sep">&middot;&middot;&middot;&middot;&middot;</div>
+
+  <!-- ════ Friction / Decay ════ -->
+  <h2 id="sec-friction">Friction（摩擦）</h2>
+  <p>
+    动量不会无限持续。<strong>摩擦</strong>让内容逐步减速，直至停下。
+    摩擦系数，是滚动手感中最重要的调参旋钮之一。
+  </p>
+  <p>
+    iOS 和 Android 的摩擦参数并不相同 &mdash; 这也是同样的甩动动作
+    在不同平台手感迥异的原因之一。摩擦太小会"打滑"，太大则"发粘"。
+  </p>
+  <p>
+    用下面这个滑块直接感受差异：
+  </p>
+  <div class="demo-controls" style="margin-top: 1rem;">
+    <label>
+      friction
+      <input type="range" id="sl-mom-friction" min="0.90" max="0.99" step="0.005" value="0.95" />
+      <span class="ctrl-value" id="vl-mom-friction">0.950</span>
+    </label>
+  </div>
+
+  <div class="section-sep">&middot;&middot;&middot;&middot;&middot;</div>
+
+  <!-- ════ Decay ════ -->
+  <h2 id="sec-decay">Decay（衰减）</h2>
+  <p>
+    动量给出了初始速度，接下来呢？速度不会瞬间归零，
+    而是沿着<strong>指数曲线</strong>衰减：前段减速猛烈，后段渐趋平缓。
+  </p>
+  <p>
+    这种形状正是"自然减速感"的来源。线性减速像匀速刹车，显得机械；
+    指数衰减更像真实摩擦 &mdash; 速度越低，阻力的效果越微弱。
+  </p>
+  <p>
+    试着甩动下方圆点，观察 ghost 标记：它们在<strong>时间</strong>上等间隔，
+    在<strong>空间</strong>上却不等间隔。起始处间距大、末尾处间距密 &mdash;
+    这正是衰减曲线的可视化写照。
+  </p>
+
+  <span class="fig-label">fig-201 &middot; exponential decay</span>
+  <div class="demo demo-grid" id="demo-decay" style="height:320px;" tabindex="0" aria-label="Decay demo — 甩动圆点，观察指数速度衰减">
+    <div class="demo-readout" id="decay-readout" aria-live="polite" role="status"></div>
+    <span class="demo-hint" id="hint-decay">甩动圆点</span>
+  </div>
+  <div class="demo-controls">
+    <label>
+      friction
+      <input type="range" id="sl-decay-friction" min="0.90" max="0.99" step="0.005" value="0.95" />
+      <span class="ctrl-value" id="vl-decay-friction">0.950</span>
+    </label>
+  </div>
+
+  <div class="section-sep">&middot;&middot;&middot;&middot;&middot;</div>
+
+  <!-- ════════════════════════════════════════════════════════════════════════ -->
+  <!-- PART B: SPRINGS                                                          -->
+  <!-- ════════════════════════════════════════════════════════════════════════ -->
+
+  <p class="part-label">Part B · 弹簧阶段</p>
+  <h2 class="part-title">弹簧</h2>
+  <p class="part-intro">
+    弹簧是响应式动画的根基。与固定时长的动画不同，
+    弹簧可以在任意时刻被打断并平滑续接 &mdash; 界面因此显得流动，而非僵硬。
+  </p>
+
+  <div class="section-sep">&middot;&middot;&middot;&middot;&middot;</div>
+
+  <!-- ════ Spring Basics ════ -->
+  <h2 id="sec-spring">为什么用弹簧？</h2>
+  <p>
+    你下拉一个面板然后松手，它弹了回去。这个"弹回"不是预设的定时动画，
+    而是实时模拟出来的弹簧过程。这一区别至关重要。
+  </p>
+
+  <div class="term-box">
+    <p>
+      “用时长和缓动曲线参数化的动画 API，
+      在底层上与连续、流体的交互是冲突的。”
+      <br />&mdash; <strong>Andy Matuschak</strong>，前 Apple UIKit 团队
+    </p>
+  </div>
+
+  <p>
+    传统 CSS 动画由 <strong>时长 + 缓动曲线</strong>定义
+    （例如 <code>transition: 0.3s ease-in-out</code>）。
+    这种方式有一个硬伤：动画难以优雅地被中断。若用户在动画途中再次触摸，
+    系统通常只能"跳到终点"或"从头重来" &mdash; 两者都不自然。
+  </p>
+  <p>
+    弹簧之所以更适合交互，因为它<strong>基于状态，而非基于时间</strong>。
+    弹簧随时知道自己的位置和速度；任意时刻都能改变目标，它会在保留动量的前提下
+    平滑转向。弹簧没有固定"总时长" &mdash; 何时稳定，由物理状态决定。
+  </p>
+
+  <h3>弹簧性格</h3>
+  <p>
+    一条弹簧的“性格”主要由 <strong>stiffness（刚度）</strong> 和
+    <strong>damping（阻尼）</strong>决定：
+  </p>
+  <table class="mini-table">
+    <thead>
+      <tr><th>手感</th><th>参数特征</th><th>适用场景</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>弹跳</strong></td><td>高刚度、低阻尼</td><td>趣味交互、开关、徽章</td></tr>
+      <tr><td><strong>利落</strong></td><td>中等刚度、接近临界阻尼</td><td>抽屉关闭、导航过渡、主流 UI</td></tr>
+      <tr><td><strong>厚重</strong></td><td>较低刚度、过阻尼</td><td>模态层、重要状态切换</td></tr>
+    </tbody>
+  </table>
+
+  <div class="diagram" id="dia-spring">
+    <div class="diagram-caption">Spring：刚度与阻尼决定运动性格</div>
+  </div>
+
+  <span class="fig-label">fig-202 &middot; spring physics</span>
+  <div class="demo demo-grid" id="demo-spring" style="height:260px; cursor:grab;" tabindex="0" aria-label="Spring demo — 把盒子拖离锚点后松手">
+    <div class="anchor-dot" style="position:absolute;width:10px;height:10px;border-radius:50%;background:var(--demo-red);pointer-events:none;"></div>
+    <div class="spring-line" style="position:absolute;height:2px;background:var(--fg-muted);transform-origin:0 50%;pointer-events:none;"></div>
+    <div class="box box-blue" style="pointer-events:none;"></div>
+    <div class="demo-readout" id="spring-readout" aria-live="polite" role="status"></div>
+    <div class="demo-hint" id="hint-spring">拖动盒子</div>
+  </div>
+  <div class="demo-controls">
+    <label>
+      stiffness k
+      <input type="range" id="sl-k" min="50" max="600" step="10" value="290" />
+      <span class="ctrl-value" id="vl-k">290</span>
+    </label>
+    <label>
+      damping b
+      <input type="range" id="sl-b" min="5" max="60" step="1" value="24" />
+      <span class="ctrl-value" id="vl-b">24</span>
+    </label>
+  </div>
+
+  <div class="section-sep">&middot;&middot;&middot;&middot;&middot;</div>
+
+  <!-- ════ Elastic ════ -->
+  <h2 id="sec-elastic">Elastic（弹性）</h2>
+  <p>
+    Elastic 可以理解为"过冲更加夸张的弹簧"。普通弹簧会相对平稳地靠近目标；
+    Elastic 则故意越过目标，并做可见的振荡，像橡皮筋回弹。
+  </p>
+  <p>
+    这种效果一般通过降低阻尼（让振荡持续更久）、同时保持较高刚度来获得。
+    结果是更跳跃、更抓眼球的动态表现。
+  </p>
+  <p>
+    Elastic 适合少量、点睛式使用，典型场景包括：
+  </p>
+  <ul class="note-list">
+    <li><strong>庆祝时刻</strong> &mdash; 徽章、成就、成功确认</li>
+    <li><strong>吸引注意</strong> &mdash; 需立即处理的通知或错误</li>
+    <li><strong>玩味 UI</strong> &mdash; 开关、反应、表情交互</li>
+  </ul>
+  <p>
+    切忌将 Elastic 用在高频动作上 &mdash; 过度弹跳在高重复场景中会迅速造成视觉疲劳。
+  </p>
+
+  <span class="fig-label">fig-202b &middot; elastic spring</span>
+  <div class="demo demo-grid" id="demo-elastic" style="height:200px; cursor:pointer;" tabindex="0" aria-label="Elastic demo — 点击触发，并调整刚度与阻尼">
+    <div class="demo-readout" id="elastic-readout" aria-live="polite" role="status"></div>
+    <div class="demo-hint" id="hint-elastic">任意位置点击</div>
+  </div>
+  <div class="demo-controls">
+    <label>
+      stiffness k
+      <input type="range" id="sl-el-k" min="50" max="800" step="10" value="500" />
+      <span class="ctrl-value" id="vl-el-k">500</span>
+    </label>
+    <label>
+      damping b
+      <input type="range" id="sl-el-b" min="2" max="60" step="1" value="8" />
+      <span class="ctrl-value" id="vl-el-b">8</span>
+    </label>
+  </div>
+
+  <div class="section-sep">&middot;&middot;&middot;&middot;&middot;</div>
+
+  <!-- ════ Snap Points ════ -->
+  <h2 id="sec-snap">Fling &amp; Snap（甩动与吸附）</h2>
+  <p>
+    很多界面在抬手后，需要将位置<strong>量化到离散值</strong>。
+    轮播吸附到整页、抽屉吸附到开/关状态、选择器吸附到离散选项 &mdash; 都是典型场景。
+  </p>
+  <p>
+    常见模式是：释放时先用<strong>指数衰减</strong>预测内容的自然停点
+    &mdash; <code>target = pos + v / (1 &minus; decayRate)</code>，
+    然后将预测结果四舍五入到最近合法吸附点，再用
+    <strong>临界阻尼弹簧</strong>（<em>&zeta; = 1.0</em>）驱动到目标。
+    fling 速度注入弹簧初速度，确保过渡连续 &mdash;
+    不跳变、不停顿。甩得快则预测更远，可能跨项；甩得慢则倾向就近吸附。
+  </p>
+
+  <div class="diagram" id="dia-snap">
+    <div class="diagram-caption">Decay-targeted snap：同一位置、不同速度 &rarr; 不同预测目标</div>
+  </div>
+
+  <span class="fig-label">fig-203 &middot; discrete picker</span>
+  <div class="demo demo-grid" id="demo-snap" style="height:280px; cursor:grab;" tabindex="0" aria-label="iOS 风格滚轮选择器 demo — 上下滚动选择，甩动后自动吸附">
+    <div class="snap-track" id="snap-track"></div>
+    <div class="snap-dot" id="snap-dot" style="pointer-events:none;"></div>
+    <div class="demo-readout" id="snap-readout" aria-live="polite" role="status"></div>
+    <div class="demo-hint" id="hint-snap">滚动选择</div>
+  </div>
+
+  <div class="section-sep">&middot;&middot;&middot;&middot;&middot;</div>
+
+  <!-- ════════════════════════════════════════════════════════════════════════ -->
+  <!-- PART C: BOUNDARIES                                                       -->
+  <!-- ════════════════════════════════════════════════════════════════════════ -->
+
+  <p class="part-label">Part C · 边界阶段</p>
+  <h2 class="part-title">边界行为</h2>
+  <p class="part-intro">
+    到达边缘时该怎么办？硬停像撞墙。弹性边界则能在表达"已到极限"的同时，
+    维持连续物理世界的错觉。
+  </p>
+
+  <div class="section-sep">&middot;&middot;&middot;&middot;&middot;</div>
+
+  <!-- ════ Rubber Band ════ -->
+  <h2 id="sec-rubber">Rubber Band / Overscroll（橡皮筋 / 超滚动）</h2>
+  <p>
+    当你把内容拖过可滚动区域的边界，该发生什么？
+    直接停死会像撞墙。多数平台采用 <strong>rubber band</strong> 效果：
+    内容继续跟手，但阻力越来越大，像在拉伸一根弹性带。
+  </p>
+  <p>
+    关键在于：越界后"手指位移 &rarr; 视觉位移"的映射变成了
+    <strong>非线性</strong>。你越往外拖，每像素手指移动所带来的内容位移就越小。
+  </p>
+  <p>
+    这本质上是一种<strong>信息传达机制</strong>：递增的阻力在告诉用户
+    "你已经到边界了" &mdash; 比硬停更温和，也更合乎直觉。
+  </p>
+
+  <div class="diagram" id="dia-rubberband">
+    <div class="diagram-caption">Rubber band：越过边界后阻力持续增大</div>
+  </div>
+
+  <span class="fig-label">fig-204 &middot; rubber band</span>
+  <div class="demo demo-grid" id="demo-rubber" style="height:260px;" tabindex="0" aria-label="Rubber band demo — 拖过 0 或 60，感受弹性阻力">
+    <div class="lp-shell">
+      <div class="lp-track" id="rubber-wheel"></div>
+    </div>
+    <div class="demo-readout" id="rb-readout" aria-live="polite" role="status"></div>
+    <div class="demo-hint" id="hint-rubber">拖过 0 或 60</div>
+  </div>
+  <div class="demo-controls">
+    <label>
+      elasticity
+      <input type="range" id="sl-rb-range" min="40" max="300" step="10" value="120" />
+      <span class="ctrl-value" id="vl-rb-range">120</span>
+    </label>
+  </div>
+
+  <div class="section-sep">&middot;&middot;&middot;&middot;&middot;</div>
+
+  <!-- ════ Bounce-Back ════ -->
+  <h2 id="sec-bounce">Bounce-Back（回弹）</h2>
+  <p>
+    Bounce-back 是 rubber band 的收尾机制。Rubber band 管的是越界拖动<strong>过程中</strong>的行为；
+    Bounce-back 管的是越界状态在<strong>释放之后</strong>如何收敛。
+  </p>
+  <p>
+    手指抬起时，若内容仍在越界区间，弹簧会将它拉回最近合法边界。
+    这个衔接必须连续：弹簧的起点应取 rubber-banded 后的显示位置，而非原始手指位置 &mdash;
+    否则拖动结束到回弹开始的瞬间会出现视觉跳变。
+  </p>
+  <p>
+    Rubber band + bounce-back，共同构成了你在 iOS 滚动末端常感受到的"弹性吸附"。
+    它像物理，而不像写死的逻辑 &mdash; 这正是好的边界行为该有的样子。
+  </p>
+
+  <span class="fig-label">fig-205 &middot; overscroll bounce</span>
+  <div class="demo demo-grid" id="demo-overscroll" style="height:260px;" tabindex="0" aria-label="Overscroll demo — 把列表甩到边界外，观察回弹效果">
+    <div class="lp-shell">
+      <div class="lp-track" id="overscroll-wheel"></div>
+    </div>
+    <div class="demo-readout" id="overscroll-readout" aria-live="polite" role="status"></div>
+    <div class="demo-hint" id="hint-overscroll">甩到边界外</div>
+  </div>
+
+  <div class="section-sep">&middot;&middot;&middot;&middot;&middot;</div>
+
+  <!-- ════ Chapter Summary ════ -->
+  <h2 id="sec-physics-summary">综合起来看</h2>
+  <p>
+    本章的这些机制会协同运作，形成流畅而即时的交互体验：
+  </p>
+  <ul class="note-list">
+    <li><strong>Momentum</strong> &mdash; 释放时继承速度</li>
+    <li><strong>Friction</strong> &mdash; 持续减速</li>
+    <li><strong>Decay</strong> &mdash; 指数减速与目标预测</li>
+    <li><strong>Springs</strong> &mdash; 可中断、状态驱动动画</li>
+    <li><strong>Fling &amp; snap</strong> &mdash; 基于衰减预测，再用临界阻尼弹簧吸附到最近目标</li>
+    <li><strong>Rubber band</strong> &mdash; 边界处的弹性阻力</li>
+    <li><strong>Bounce-back</strong> &mdash; 越界后的弹簧回归</li>
+  </ul>
+  <p>
+    下一章，我们将看到这些原语如何组合成
+    <strong>交互模式</strong> &mdash; 下拉刷新、轮播、可重排网格、橡皮筋滑杆。
+  </p>
+
+  <ChapterNav lang="zh" chapterId="ch2" />
+
+  <script>
+    import '../../demos/momentum.js'
+    import '../../demos/spring-demo.js'
+    import '../../demos/elastic.js'
+    import '../../demos/snap-points.js'
+    import '../../demos/rubber-band.js'
+    import '../../demos/overscroll.js'
+    import '../../demos/decay-prediction.js'
+    import { drawMomentumDiagram, drawSpringDiagram, drawSnapDiagram, drawRubberBandDiagram } from '../../demos/ch3-diagrams.js'
+    drawMomentumDiagram('dia-momentum')
+    drawSpringDiagram('dia-spring')
+    drawSnapDiagram('dia-snap')
+    drawRubberBandDiagram('dia-rubberband')
+  </script>
+</BaseLayout>

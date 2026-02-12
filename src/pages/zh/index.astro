@@ -1,0 +1,72 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro'
+import ChapterNav from '../../components/ChapterNav.astro'
+---
+
+<BaseLayout lang="zh" title="Gesture Guide — 导言" breadcrumbLabel="导言" description="学习手势驱动界面的基础：直接操控与让交互更自然的反馈闭环。">
+  <p class="byline">面向交互设计师的互动指南</p>
+  <h1>什么让交互“顺手”</h1>
+  <p class="lead">
+    点按、拖拽、甩动、滑动 &mdash; 你在手机上的每一次触摸，
+    背后都是一次手势识别：系统从手指运动中捕捉模式，再做出回应。
+    本指南将逐一拆解这些手势背后的机制，并附上可交互的 demo，
+    让你边读边感受。
+  </p>
+
+  <div class="section-sep">&middot;&middot;&middot;&middot;&middot;</div>
+
+  <h2 id="sec-direct">直接操控</h2>
+  <p>
+    触摸交互设计里最重要的原则是 <strong>直接操控</strong>：
+    内容随手指一比一移动，几乎没有可感知延迟。做到这一点，
+    屏幕就像一块真实可触摸的表面；一旦出现哪怕约 50ms 的滞后，这种错觉便会碎裂 &mdash;
+    你不再是在"触摸内容"，而是在"遥控内容"。
+  </p>
+  <p>
+    Apple 的交互研究表明，用户对输入延迟的感知阈值可低至 <strong>约 10ms</strong>。
+    因此本指南中的每个手势都遵循同一原则：手指在屏幕上时，优先做即时 1:1 跟手；
+    手指抬起后，再交由物理系统接管 &mdash; 弹簧、动量、吸附，各司其职。
+  </p>
+
+  <div class="section-sep">&middot;&middot;&middot;&middot;&middot;</div>
+
+  <h2 id="sec-feedback">反馈闭环</h2>
+  <p>
+    一次触摸交互，通常会走过四个阶段：
+  </p>
+  <ul class="note-list">
+    <li><strong>Press</strong> &mdash; 手指触碰屏幕。界面应立即给出视觉反馈 &mdash; 高亮、缩放、涟漪皆可 &mdash; 告诉用户：输入已被接收。</li>
+    <li><strong>Follow</strong> &mdash; 手指若移动，内容便 1:1 跟随。这是直接操控的核心阶段，系统也在持续判断这次动作会发展成哪种手势。</li>
+    <li><strong>Release</strong> &mdash; 手指抬起。系统据此确定事件类型 &mdash; tap、fling 还是 swipe &mdash; 并提交对应结果。</li>
+    <li><strong>Settle</strong> &mdash; 物理系统接管。内容会带着动量滑行，弹回吸附点，或在边界处反弹。这个阶段传达的是手势的"后果"。</li>
+  </ul>
+  <p>
+    当四个阶段俱在且调校得当，交互便显得
+    <strong>连续而鲜活</strong>。缺任何一环 &mdash; 按下没有反馈、跟手出现卡顿、抬手后生硬停止 &mdash;
+    体验都会出现断裂。
+  </p>
+
+  <div class="diagram" id="dia-pointer-events">
+    <div class="diagram-caption">手势生命周期：press、follow、release、settle</div>
+  </div>
+
+  <h3>试试看：反馈闭环如何工作</h3>
+  <p>
+    在下方区域触摸或点击并拖动，观察状态指示器如何在四个阶段间切换。
+  </p>
+
+  <span class="fig-label">fig-000 &middot; 手势反馈闭环</span>
+  <div class="demo demo-grid" id="demo-pointer-log" style="height: 280px; cursor: grab;" tabindex="0" aria-label="手势反馈闭环 demo — 触摸并拖动，查看 Press、Follow、Release、Settle 阶段变化">
+    <canvas id="pointer-trail-canvas" style="position:absolute;inset:0;width:100%;height:100%;"></canvas>
+    <div class="demo-readout" id="pointer-log-readout" aria-live="polite" role="status"></div>
+    <div class="demo-hint" id="hint-pointer">触摸并拖动</div>
+  </div>
+
+  <ChapterNav lang="zh" chapterId="ch0" />
+
+  <script>
+    import '../../demos/pointer-logger.js'
+    import { drawPointerEventModel } from '../../demos/diagrams.js'
+    drawPointerEventModel('dia-pointer-events')
+  </script>
+</BaseLayout>
