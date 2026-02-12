@@ -325,8 +325,31 @@ export function initPinchZoom() {
       const newScale = clampScale(scaleSpring.pos * zoomFactor)
       scaleSpring.pos = newScale
       scaleSpring.dest = Math.max(MIN_SCALE, Math.min(MAX_SCALE, newScale))
+
+      // Track scale history for velocity transfer on wheel end
+      scaleHistory.push({ scale: newScale, time: now })
+      if (scaleHistory.length > 20) scaleHistory.shift()
       scaleSpring.v = 0
+
       wheelActiveUntil = now + 160
+      animatedUntilTime = null
+    }
+
+    // Wheel ended — transfer velocity
+    if (scaleHistory.length > 0 && now > wheelActiveUntil && !events.wheel) {
+      if (scaleHistory.length > 1) {
+        let i = scaleHistory.length - 1
+        while (i > 0 && wheelActiveUntil - scaleHistory[i].time <= VELOCITY_WINDOW_MS) i--
+        if (i < scaleHistory.length - 1) {
+          const oldest = scaleHistory[i]
+          const newest = scaleHistory[scaleHistory.length - 1]
+          const dt = newest.time - oldest.time
+          if (dt > 0) {
+            scaleSpring.v = (newest.scale - oldest.scale) / dt * 1000
+          }
+        }
+      }
+      scaleHistory = []
       animatedUntilTime = null
     }
 
@@ -406,7 +429,7 @@ export function initPinchZoom() {
     events.keydown = null
     events.wheel = null
 
-    return stillAnimating || pointers.size > 0 || rightClickZoom
+    return stillAnimating || pointers.size > 0 || rightClickZoom || now < wheelActiveUntil + 20
   }
 
   // === event listeners ===

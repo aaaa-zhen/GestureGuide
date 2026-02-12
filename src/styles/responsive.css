@@ -50,6 +50,10 @@
     right: 24px;
   }
 
+  .rope-hint {
+    right: 66px;
+  }
+
   h1 {
     font-size: 2rem;
   }
@@ -137,6 +141,10 @@
 
   #rope-toggle {
     right: 16px;
+  }
+
+  .rope-hint {
+    right: 58px;
   }
 
   h1 {

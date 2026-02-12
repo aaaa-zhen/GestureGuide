@@ -307,6 +307,37 @@ export function initRopePull() {
   updateA11yState()
   ensureRunning()
 
+  // ── First-visit tooltip hint ──
+  const HINT_KEY = 'rope-hint-seen'
+  if (!localStorage.getItem(HINT_KEY)) {
+    const isZh = document.documentElement.lang === 'zh-CN'
+    const hint = document.createElement('div')
+    hint.className = 'rope-hint'
+    hint.textContent = isZh ? '拉动切换深色模式' : 'Pull to toggle dark mode'
+    // Insert into content-region (canvas's grandparent) for reliable positioning
+    const contentRegion = canvas.closest('.content-region')
+    if (contentRegion) {
+      contentRegion.appendChild(hint)
+    }
+
+    function dismissHint() {
+      if (!hint.parentElement) return
+      hint.classList.add('rope-hint-out')
+      localStorage.setItem(HINT_KEY, '1')
+      hint.addEventListener('animationend', () => hint.remove())
+    }
+
+    // Auto-dismiss after 4 seconds
+    const timer = setTimeout(dismissHint, 4000)
+
+    // Dismiss on first interaction with the rope
+    canvas.addEventListener('pointerdown', function onFirstTouch() {
+      canvas.removeEventListener('pointerdown', onFirstTouch)
+      clearTimeout(timer)
+      dismissHint()
+    })
+  }
+
   onCleanup(() => {
     canvas.removeEventListener('pointerdown', onPointerDown)
     canvas.removeEventListener('keydown', onKeyDown)
