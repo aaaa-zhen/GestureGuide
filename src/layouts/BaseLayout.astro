@@ -45,6 +45,9 @@ const ropeLabel = isZh ? '拉动绳子切换深色模式' : 'Pull rope to toggle
 const footerLabel = isZh
   ? '手势指南 · 如何设计自然直觉的屏幕交互'
   : 'Gesture Guide · How to Create Intuitive Interactions on Digital Screens'
+const authorLabel = isZh
+  ? '一名 Motion Designer，目前在 Meizu 工作'
+  : 'A Motion Designer, currently working at Meizu'
 
 const switchHref = isZh
   ? (normalizedPath.replace(/^\/zh\//, '/') || '/')
@@ -113,7 +116,13 @@ const switchAria = isZh ? 'Switch to English' : '切换到中文'
       <slot />
 
       <div class="footer">
-        {footerLabel}
+        <p>{footerLabel}</p>
+        <p class="footer-author">
+          {authorLabel} · WeChat: abcdezhenn
+        </p>
+        <p class="footer-links">
+          <a href="https://github.com/aaaa-zhen/GestureGuide" target="_blank" rel="noopener noreferrer">GitHub</a>
+        </p>
       </div>
     </div>
   </div>

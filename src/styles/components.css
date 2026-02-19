@@ -149,6 +149,16 @@
   color: var(--fg-muted);
   text-align: center;
 }
+.footer p { margin: 0.3em 0; }
+.footer-author { opacity: 0.8; }
+.footer-links a {
+  color: var(--fg-muted);
+  text-decoration: none;
+  border-bottom: 1px solid var(--border);
+}
+.footer-links a:hover {
+  color: var(--fg);
+}
 
 /* ── Event log (pointer logger demo) ── */
 .event-log {
