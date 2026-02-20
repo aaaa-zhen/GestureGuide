@@ -1,8 +1,7 @@
 // Touch Down Demo (Chapter 1)
 // chenglou-style: DOM + transform3d, tap anywhere shows ripple feedback
 
-import { spring, springStep, springSnap, springAtRest } from '../engine/render-loop.js'
-import { onResize } from '../engine/lifecycle.js'
+import { spring, springAtRest, springSnap, springStep } from '../engine/render-loop.js'
 
 const MS_PER_STEP = 4
 
@@ -93,6 +92,12 @@ export function initTouchDown() {
     // Process pointerdown
     for (const e of events.pointerdown) {
       if (hint) hint.style.display = 'none'
+      const existing = touches.get(e.pointerId)
+      if (existing) {
+        existing.outer.remove()
+        existing.inner.remove()
+        touches.delete(e.pointerId)
+      }
       const pos = getPos(e)
       const { outer, inner } = createTouchElements(pos.x, pos.y)
       const ripple = spring(0, 0, 350, 20)
