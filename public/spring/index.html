@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>弹簧 Spring，以及苹果为什么离不开它</title>
+<link rel="icon" href="spring.ico">
+<style>
+  :root{
+    --bg:#08090a; --panel:#0f1011; --line:rgba(255,255,255,.08); --ink:#f7f8f8;
+    --body:#b4bac4; --dim:#8a8f98; --accent:#828fff; --accent-dim:#5e6ad2;
+    --apple:#fc7840; --good:#4cb782;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0; background:var(--bg); color:var(--body);
+    font-family:"Inter",-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC",sans-serif;
+    font-size:16px; line-height:1.8; font-weight:400;
+    -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+  }
+  ::selection{background:rgba(94,106,210,.45)}
+  .wrap{max-width:820px; margin:0 auto; padding:96px 32px 160px}
+  h1{font-size:36px; line-height:1.18; font-weight:600; letter-spacing:-.022em; color:var(--ink); margin:0 0 20px}
+  .sub{color:var(--dim); font-size:17px; line-height:1.7; margin:0 0 72px}
+  h2{font-size:21px; line-height:1.35; font-weight:600; letter-spacing:-.012em; color:var(--ink);
+     margin:96px 0 8px; padding-top:40px; border-top:1px solid var(--line)}
+  .tag{display:inline-block; font-size:11px; font-weight:500; letter-spacing:.02em;
+    padding:3px 10px; border-radius:999px; background:rgba(94,106,210,.14); color:var(--accent);
+    border:1px solid rgba(94,106,210,.28); vertical-align:middle; margin-left:10px}
+  .tag.real{background:rgba(76,183,130,.10); color:var(--good); border-color:rgba(76,183,130,.25)}
+  .tag.fake{background:rgba(252,120,64,.08); color:var(--apple); border-color:rgba(252,120,64,.22)}
+  p{margin:22px 0}
+  .lead{color:var(--dim); font-size:15px; line-height:1.7; margin:6px 0 28px}
+  b{color:var(--ink); font-weight:600}
+  code{font:14px/1.5 "SF Mono",ui-monospace,monospace; background:rgba(255,255,255,.06);
+    padding:1px 6px; border-radius:5px; color:#bfc8ff; margin:0 1px}
+  .demo{background:var(--panel); border:1px solid var(--line); border-radius:12px;
+    padding:16px; margin:32px 0; box-shadow:0 1px 1px rgba(0,0,0,.3), 0 16px 40px rgba(0,0,0,.3)}
+  canvas{display:block; width:100%; border-radius:8px; background:#0b0c0e}
+  .ctrls{display:flex; flex-wrap:wrap; gap:16px; margin-top:14px; align-items:center}
+  .ctrl{display:flex; flex-direction:column; gap:4px; min-width:120px; flex:1}
+  .ctrl label{font-size:12px; color:var(--dim); display:flex; justify-content:space-between}
+  .ctrl label .v{color:var(--accent); font-variant-numeric:tabular-nums; font-weight:500}
+  input[type=range]{width:100%; accent-color:var(--accent-dim); cursor:pointer; height:4px}
+  .btns{display:flex; gap:8px; flex-wrap:wrap}
+  button{font:13px/1 inherit; font-weight:500; padding:8px 14px; border-radius:8px;
+    border:1px solid rgba(255,255,255,.1); background:rgba(255,255,255,.05); color:var(--ink);
+    cursor:pointer; transition:background .15s, border-color .15s;
+    display:inline-flex; align-items:center; gap:6px}
+  button svg{width:13px; height:13px; flex:none}  /* lucide 图标 */
+  button:hover{background:rgba(255,255,255,.09); border-color:rgba(255,255,255,.16)}
+  button.go{background:#e6e7eb; color:#0a0b0d; border-color:transparent; font-weight:600}
+  button.go:hover{background:#fff}
+  .legend{display:flex; gap:18px; font-size:12.5px; color:var(--dim); margin-top:12px; flex-wrap:wrap}
+  .legend i{display:inline-block; width:16px; height:2px; border-radius:2px; vertical-align:middle; margin-right:6px}
+  /* Demo 1: DOM 轨道 + 滑动球（球用 transform，GPU 合成，最顺滑） */
+  .d1rails{display:flex; flex-direction:column; gap:12px; margin-bottom:14px}
+  .d1lane .d1tag{font-size:12.5px; color:var(--dim); display:flex; justify-content:space-between; margin-bottom:8px}
+  .d1rail{position:relative; height:30px; cursor:pointer}
+  .d1rail::before{content:""; position:absolute; left:15px; right:15px; top:50%; border-top:1px solid var(--line)}
+  .d1ball{position:absolute; top:4px; left:0; width:22px; height:22px; border-radius:50%; will-change:transform}
+  .d1ball.c{background:var(--apple)} .d1ball.s{background:var(--good)}
+  /* Demo 2：两条轨道 + 滑动球（球/速度尾巴/目标刻度全是 div） */
+  .d2stage{display:flex; flex-direction:column; gap:22px; padding:14px 0 6px}
+  .d2lab{font-size:11px; color:var(--dim); margin-bottom:10px}
+  .d2track{position:relative; height:28px; margin:0 22px}
+  .d2track::before{content:""; position:absolute; left:0; right:0; top:50%; border-top:1px solid var(--line)}
+  .d2ball{position:absolute; top:3px; left:0; width:22px; height:22px; border-radius:50%; will-change:transform}
+  .d2ball.c{background:var(--apple)} .d2ball.s{background:var(--good)}
+  .d2tail{position:absolute; left:11px; top:11px; width:1px; height:2px; background:var(--good); opacity:.55; transform-origin:left center; will-change:transform}
+  .d2tick{position:absolute; top:2px; left:0; width:2px; height:24px; background:#555; will-change:transform}
+  /* 6–8 节：fluidDots 三层拆解（6 颗 dot，纯 DOM，transform 驱动） */
+  .fdstage{position:relative; height:260px}
+  .fdring{position:absolute; left:50%; top:50%; border:1px solid #1c1c22; border-radius:50%; transform:translate(-50%,-50%)}
+  .fdcenter{position:absolute; left:50%; top:50%; width:5px; height:5px; border-radius:50%; background:#262630; transform:translate(-50%,-50%)}
+  .fdot{position:absolute; left:50%; top:50%; width:22px; height:22px; margin:-11px 0 0 -11px; border-radius:50%;
+    background:#f2f3f5; box-shadow:0 0 16px rgba(255,255,255,.22); will-change:transform}
+  #fd7{cursor:pointer}
+  .note{font-size:14.5px; line-height:1.7; color:#9ba1ab; background:rgba(255,255,255,.03);
+    border:1px solid var(--line); border-left:2px solid var(--accent-dim);
+    padding:16px 20px; border-radius:0 10px 10px 0; margin:28px 0}
+  .note.key{border-left-color:var(--apple)}
+  .note b{color:var(--ink)}
+  blockquote{margin:32px 0; padding:20px 24px; background:var(--panel); border:1px solid var(--line);
+    border-left:2px solid var(--ink); border-radius:0 10px 10px 0}
+  blockquote p{font-size:17px; line-height:1.65; color:var(--ink); margin:0 0 10px; font-weight:500}
+  blockquote cite{font-style:normal; font-size:13.5px; color:var(--dim)}
+  .cap{font-size:13px; color:var(--dim); margin-top:12px}
+  .kicker{font-size:12px; letter-spacing:.1em; text-transform:uppercase; color:var(--dim); font-weight:500; margin-bottom:24px}
+  @media(max-width:560px){ h1{font-size:29px} h2{font-size:19px} .wrap{padding:64px 18px 100px} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="kicker">动画底层 · 给 Motion Designer</div>
+<h1>弹簧 Spring，以及苹果为什么离不开它</h1>
+<p class="sub">苹果的动画好在哪一层？为什么是弹簧而不是缓动曲线？每个概念配一个能拖的 demo。</p>
+
+<!-- ============ 1 ============ -->
+<h2 id="c1">1 · 为什么是弹簧，不是曲线 <span class="tag">核心</span></h2>
+<p class="lead">区别不在「好看」，在「能不能被打断」。</p>
+
+<p>下拉一个面板松手，它弹回去——这个「弹回」<b>不是预设的定时动画，而是实时模拟的弹簧</b>。理解苹果动画，从这个区别开始。</p>
+
+<blockquote>
+  <p>"用时长和缓动曲线参数化的动画 API，在底层上与连续、流畅的交互是冲突的。"</p>
+  <cite>Andy Matuschak · 前 Apple UIKit 团队</cite>
+</blockquote>
+
+<p>你在动画软件里画的缓动曲线，本质是 <b>时长 + 曲线形状</b>（像 <code>0.3s ease-in-out</code>）。它是<b>基于时间</b>的：给定 t，查出 value。平时没问题——直到动画<b>中途被打断</b>。</p>
+
+<p>下面两个点都从左滑到右，跑到一半我强制把目标改回左边。看它们各自怎么反应：</p>
+
+<div class="demo">
+  <div class="d1rails">
+    <div class="d1lane">
+      <div class="d1tag"><span>缓动曲线（基于时间）</span><span>点轨道任意时刻打断</span></div>
+      <div class="d1rail" id="d1railC"><div class="d1ball c" id="d1ballC"></div></div>
+    </div>
+    <div class="d1lane">
+      <div class="d1tag"><span>弹簧（基于状态）</span></div>
+      <div class="d1rail" id="d1railS"><div class="d1ball s" id="d1ballS"></div></div>
+    </div>
+  </div>
+  <canvas id="cv1" height="150"></canvas>
+  <div class="legend">
+    <span><i style="background:var(--apple)"></i>缓动曲线：打断时重开一段补间，速度被丢弃</span>
+    <span><i style="background:var(--good)"></i>弹簧：打断时只改目标，速度被保留</span>
+  </div>
+  <div class="ctrls">
+    <div class="btns">
+      <button class="go" onclick="D1.fire()">滑到一半时打断</button>
+      <button onclick="D1.reset()">重置</button>
+    </div>
+  </div>
+  <div class="cap">上方是真实滑动的球，下方 canvas 记录它们的位置-时间轨迹。虚线是打断时刻：曲线在此有个肉眼可见的折角，弹簧先减速、再调头。<b>点轨道任意时刻也能手动打断。</b></div>
+</div>
+
+<p>曲线版被打断时，位置是连续的，但<b>速度瞬间反向</b>——出现一个折角，看着就「顿」了一下。弹簧版速度始终连续：它<b>先减速、再调头</b>，像真的有惯性。</p>
+
+<div class="note"><b>弹簧适合交互，因为它基于状态，而非基于时间。</b>它随时知道自己的位置和速度；任意时刻改变目标，都能在保留动量的前提下平滑转向。它没有固定「总时长」——何时停下，由物理状态决定。</div>
+
+<!-- ============ 2 ============ -->
+<h2 id="c2">2 · velocity 继承</h2>
+<p class="lead">承上：spring 顺滑的本质是 <b>新目标来时，旧速度被继承进下一段运动</b>。</p>
+<p>连续点击「换目标」，故意在小球还没停时就再点。曲线版每次都从 0 速度重启（一顿一顿），spring 版把当前速度带进去（连贯流动）：</p>
+<div class="demo">
+  <div class="d2stage">
+    <div class="d2lane">
+      <div class="d2lab">曲线 · 每次从静止重启</div>
+      <div class="d2track"><div class="d2ball c" id="d2ballC"></div></div>
+    </div>
+    <div class="d2lane">
+      <div class="d2lab">spring · 速度尾巴 = 继承的 velocity</div>
+      <div class="d2track">
+        <div class="d2tick" id="d2tick"></div>
+        <div class="d2ball s" id="d2ballS"><div class="d2tail" id="d2tail"></div></div>
+      </div>
+    </div>
+  </div>
+  <div class="legend"><span><i style="background:var(--apple)"></i>曲线：每段从 v=0 重启</span><span><i style="background:var(--good)"></i>spring：v 连续继承</span></div>
+  <div class="ctrls">
+    <div class="btns"><button class="go" onclick="D2.poke()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>换目标（连点试试）</button></div>
+    <div class="ctrl"><label>spring 刚度 <span class="v" id="d2k">170</span></label><input type="range" id="d2ks" min="40" max="400" value="170"></div>
+    <div class="ctrl"><label>阻尼 <span class="v" id="d2d">16</span></label><input type="range" id="d2ds" min="4" max="40" value="16"></div>
+  </div>
+  <div class="note">这就是为什么对 Siri 说话、它的波形/球可以 <b>实时跟着你的语音强度变</b> 而永远不顿——每次新目标都软着陆在当前运动上。动画软件的关键帧做不到，因为关键帧之间是固定曲线。</div>
+</div>
+
+<!-- ============ 3 苹果的取舍 ============ -->
+<h2 id="c3">3 · 苹果对弹簧做了哪些取舍</h2>
+<p class="lead">它没照搬物理课本。每一处偏离，都是为了设计师好用。</p>
+<p>教科书的弹簧（<code>F = −kx − bv</code> 数值积分）很真实，但对做产品的人有几个痛点。苹果在 UIKit / SwiftUI 里改了四个地方，方向都一样：<b>用一点物理纯粹性，换设计上的可控</b>。</p>
+
+<p><b>取舍一 · 让弹簧「可以设时长」。</b>传统弹簧没有时长——你给刚度阻尼，它自己决定多久停。但设计师的语言是「这个动画 0.5 秒」。苹果的 <code>spring(duration:bounce:)</code> 把它反过来：<b>你说「多久」和「多弹」，系统反推刚度阻尼</b>。于是你既能像曲线一样指定时长，又保留了弹簧的可打断。四个改动里这是最反直觉的一个。</p>
+<div class="demo">
+  <canvas id="cvt" height="200"></canvas>
+  <div class="ctrls">
+    <div class="ctrl"><label>duration 时长（秒）<span class="v" id="dtt">0.6</span></label><input id="dtts" type="range" min="2" max="14" value="6"></div>
+    <div class="ctrl"><label>bounce 弹性 <span class="v" id="dtb">0.30</span></label><input id="dtbs" type="range" min="0" max="70" value="30"></div>
+  </div>
+  <div class="note">注意：调的是「时长」和「弹性」——而不是抽象的刚度/阻尼。<b>bounce=0</b> 时无过冲（接近 ease）；越大越弹。虚线 = duration 标记，曲线在它附近基本到位。</div>
+</div>
+
+<p><b>取舍二 · 为「可预测」牺牲纯物理。</b>真实弹簧理论上 <b>永远不会真正停下</b>——振幅指数衰减，无限趋近但不到零。产品里不能这样：动画得有个明确的「结束」，否则永远在重绘、耗电。苹果用一个 <b>静止阈值</b> 解决：当速度和距离都小到一帧内看不出变化，直接吸附到终点、停止。安卓的同款机制叫 <code>minimumVisibleChange</code>。这是工程对物理的妥协，但用户只会觉得「干净地停住了」。（第 4 节会把数值 spring 这个「永不到零」的细节展开。）</p>
+
+<p><b>取舍三 · 速度由系统自动接管。</b>你拖一个视图甩出去，松手那一刻，<b>手指的速度被自动注入弹簧</b>——你不用写任何代码去测速、传递。UIKit / SwiftUI 在手势识别器里内建了这条链路。iOS 所有「滑动惯性」都来自这里——第 2 节的「velocity 继承」，系统替你做了。</p>
+
+<p><b>取舍四 · 默认值本身就是设计语言。</b>SwiftUI 给了几个预设弹簧：<code>.smooth</code>、<code>.snappy</code>、<code>.bouncy</code>。它们不是随手填的数，而是 <b>经过调校、保证全系统手感统一</b> 的一套规范。大多数苹果工程师从不手写刚度阻尼——直接用预设，于是整个系统的动画手感天然一致。</p>
+<div class="note key"><b>总结：</b>苹果把「物理上正确的弹簧」改成了「设计上好用的弹簧」——可设时长、保证停止、自动接管速度、默认即规范。</div>
+
+<!-- ============ 4 ============ -->
+<h2 id="c4">4 · 解析 spring vs 数值 spring：分界线不是解法，是状态</h2>
+<p class="lead">苹果 shader 里的 overshoot 公式，就是阻尼弹簧方程的 <b>精确解析解</b>——不是近似、不是手调曲线，反而比数值积分还准。真正的分界线也不在「解析 vs 数值」，而在 <b>带不带状态</b>。用无状态闭式只为一件事：<b>它是 t 的纯函数，能塞进 shader，还能干净、可预测地停下来。</b></p>
+<p>同一个微分方程 <code>mẍ + bẋ + kx = 0</code>，两种用法，<b>静态结果几乎重合</b>（下面叠加可见）。区别全在「怎么停」和「能不能被打断」——而这两条都由 <b>状态</b> 决定，不由解法决定：</p>
+<table style="width:100%; border-collapse:collapse; font-size:15px; margin:28px 0">
+  <tr style="color:var(--dim); text-align:left"><th style="padding:13px 16px; border-bottom:1px solid var(--line)"></th>
+    <th style="padding:13px 16px; border-bottom:1px solid var(--line); color:var(--good)">带状态 · 逐帧推进（chenglou / 安卓 / SwiftUI 交互式）</th>
+    <th style="padding:13px 16px; border-bottom:1px solid var(--line); color:var(--accent)">无状态 · t 的纯函数（苹果 shader 公式）</th></tr>
+  <tr><td style="padding:14px 16px; color:var(--dim)">怎么算</td>
+    <td style="padding:14px 16px">每帧拿当前 (x, v) 推进一步 dt。内部可以是欧拉积分（chenglou 的 <code>v += a·dt</code>），也可以是<b>闭式推进</b>（安卓 SpringForce 拿当前 x、v 当初值，解析算出 dt 后的状态）<br><span style="color:var(--dim)">数值/解析不是这一列的分界</span></td>
+    <td style="padding:14px 16px">直接套 <code>1−e^(−l·t)·cos(w·t)</code>，整条轨迹是 t 的显式函数</td></tr>
+  <tr><td style="padding:14px 16px; color:var(--dim)">怎么停</td>
+    <td style="padding:14px 16px"><b>渐近，永不到零</b> → 逐帧判吸附阈值<br><span style="color:var(--dim)">安卓 minimumVisibleChange / chenglou 的 <code>|v|&lt;0.01 && |dest−pos|&lt;0.01</code></span></td>
+    <td style="padding:14px 16px"><b>阈值只用一次</b>：预解出停止时刻 T ≈ ln(1/ε)/l 当时长，到 T 钳到终值<br><span style="color:var(--dim)">CASpringAnimation 的 settlingDuration 即此。逐帧零判断，但 ε 还在</span></td></tr>
+  <tr><td style="padding:14px 16px; color:var(--dim)">能否被打断</td>
+    <td style="padding:14px 16px"><b>能</b>，(x, v) 是状态，随时换目标、velocity 继承</td>
+    <td style="padding:14px 16px"><b>这个两参数公式不能</b>（初条件写死、没有 v₀）。但通用闭式解可以：<code>x(t) = e^(−l·t)·[x₀·cos(w·t) + ((v₀+l·x₀)/w)·sin(w·t)]</code>，打断时取当前 (x, v) 重新锚定<br><span style="color:var(--dim)">CASpringAnimation / SwiftUI Spring 正是这么做的</span></td></tr>
+</table>
+<div class="demo">
+  <canvas id="cv3" height="200"></canvas>
+  <div class="legend"><span><i style="background:var(--good)"></i>数值积分</span><span><i style="background:var(--accent)"></i>解析闭式解 1−e^(−λt)·cos</span></div>
+  <div class="ctrls">
+    <div class="btns"><button class="go" onclick="D3.fire()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="6 3 20 12 6 21 6 3"/></svg>同时发射</button></div>
+    <div class="ctrl"><label>频率 ω <span class="v" id="d3w">10</span></label><input type="range" id="d3ws" min="3" max="22" value="10"></div>
+    <div class="ctrl"><label>衰减 λ <span class="v" id="d3z">3.0</span></label><input type="range" id="d3zs" min="1" max="80" value="30"></div>
+  </div>
+  <div class="note key"><b>从 Siri shader 逆向出的两个函数，就是这个方程两种阻尼情形的精确解：</b><br>
+    <code>settleWL(t,w,l) = 1 − e^(−l·t)·cos(w·t)</code> ← 欠阻尼，cos 项 = overshoot 回弹。一个细节：它隐含初速度 v(0) = l（求导可得），不是静止出发；静止出发的精确解多一项 <code>(l/w)·sin(w·t)</code>，l 不大时肉眼无差<br>
+    <code>settleCrit(t,l) = 1 − e^(−l·t)·(1+l·t)</code> ← 临界阻尼、<b>零初速</b>的精确解，无过冲单调到位<br>
+    两个都是货真价实的解析解。苹果在 shader 里选它们，是因为 <b>shader 必须是 (time, uniforms) 的纯函数、存不了状态</b>——「能干净地停」是这个约束下顺手的收益。</div>
+  <div class="note"><b>「看似停了其实还在跑」是带状态逐帧推进的固有问题，不是解析解的：</b>
+    逐帧 spring 的 <code>e^(−t)</code> 渐近趋零、<b>理论上永不到零</b>，不掐断就会以 0.0001px 的振幅一直动下去，每帧白白计算和重绘。
+    解法是吸附阈值——<b>安卓的 <code>setMinimumVisibleChange()</code></b>（按像素/角度给阈值），chenglou 写作
+    <code>|v|&lt;0.01 && |dest−pos|&lt;0.01 → 直接归位</code>。两个条件缺一不可：
+    只判位置会在<b>穿过目标的瞬间</b>（pos≈dest 但 v 很大）误停；只判速度会在<b>过冲顶点</b>（v≈0 但离目标最远）误停。
+    而苹果的纯函数解不是不要阈值，是把阈值用在另一头：<b>ε 只花一次，预解出停止时刻，到点钳位</b>——逐帧再无判断。</div>
+</div>
+<div class="note key"><b>苹果 UI 层的闭式 spring 怎么做到可打断：</b>CASpringAnimation / SwiftUI Spring 用的是带初条件的通用解
+  <code>x(t) = e^(−λt)·[x₀·cos(ωt) + ((v₀+λx₀)/ω)·sin(ωt)]</code>——x₀ 是离目标的距离，v₀ 是当前速度。打断时三步：<br>
+  ① <b>取当前状态</b>：位置直接读（CoreAnimation 读 presentationLayer）；速度也不用积分器——闭式解可以解析求导，x′(t) 代入当前时刻就是精确的瞬时速度<br>
+  ② <b>重新锚定</b>：以新目标为原点，把刚取出的 (x, v) 当新一段的 (x₀, v₀)，时间从 0 重起<br>
+  ③ 新一段的初速度 = 上一段的末速度，位置和速度都连续——<b>没有折角</b><br>
+  本质是「分段无状态」：段内是 t 的纯函数，状态只在打断的那一刻被捕获、传递一次。</div>
+
+<p><b>一句话收尾</b>：可打断 ⇔ 携带 (x, v) 状态。解析还是数值只是「怎么推进」的实现细节——安卓用闭式逐帧推进、SwiftUI 的闭式弹簧照样可打断，都是证据。苹果 shader 选无状态版，是 GPU 纯函数约束下的工程取舍，<b>不是解析解的数学限制</b>。</p>
+
+<!-- ============ 5 ============ -->
+<h2 id="c5">5 · 什么时候用 spring，什么时候不用</h2>
+<p class="lead">讲了四节 spring，但不是所有运动都适合 spring。</p>
+<!-- ============ 6 ============ -->
+<h2 id="c6">6 · 旋转：永远在跑的运动，用 linear</h2>
+<p class="lead">第一层：旋转——没有起止、没人打断的背景运动。</p>
+<p>匀速就是对的。加 ease 反而会「一顿一顿」：</p>
+<div class="demo">
+  <div class="fdstage" id="fd5"><div class="fdring"></div><div class="fdcenter"></div></div>
+  <div class="note"><b>永远在跑的运动 → linear。</b></div>
+</div>
+
+<!-- ============ 7 ============ -->
+<h2 id="c7">7 · 缩放：预定循环的运动，用 ease</h2>
+<p class="lead">第二层：缩放——大小的呼吸循环。预定好、永远没人打断，这种就该用 ease。</p>
+<p>节奏固定，「不可打断」这个缺点就无所谓了。6 颗球相位错开，才像活物：</p>
+<div class="demo">
+  <div class="fdstage" id="fd6"><div class="fdring"></div><div class="fdcenter"></div></div>
+  <div class="note"><b>预定的循环 → ease。</b></div>
+</div>
+
+<!-- ============ 8 ============ -->
+<h2 id="c8">8 · 移动：会被打断的运动，用 spring + velocity</h2>
+<p class="lead">第三层：移动（穿心）。唯一<b>会被打断</b>的运动——这才轮到 spring。每球一个独立 spring（反汇编符号 <code>FluidDotsParamsV12SpringConfigV</code>）。</p>
+<p>· <b>全员穿心</b>——改目标，spring 把球带过去<br>
+   · <b>移动途中点一下 dots</b>——打断：velocity 被继承，带着惯性调头<br>
+   · <b>聚合→爆开</b>——还是这组 spring，只是改目标值<br>
+   · <b>只给 velocity</b>——不设目标，只给初速度：够快就穿到对面，不够就弹回来。iOS 翻页就是这个逻辑</p>
+<div class="demo">
+  <div class="fdstage" id="fd7"><div class="fdring"></div><div class="fdcenter"></div></div>
+  <div class="ctrls">
+    <div class="btns">
+      <button class="go" id="g7fly"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="6 3 20 12 6 21 6 3"/></svg>全员穿心</button>
+      <button id="g7gb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>聚合→爆开</button>
+      <button id="g7fling"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>只给 velocity（不设目标）</button>
+    </div>
+  </div>
+  <div class="ctrls">
+    <div class="ctrl"><label>初速度 velocity <span class="v" id="g7v">6.0</span></label><input type="range" id="g7vs" min="15" max="120" value="60"></div>
+    <div class="ctrl"><label>错相位 stagger <span class="v" id="g7s">0.10</span></label><input type="range" id="g7ss" min="0" max="40" value="10"></div>
+    <div class="ctrl"><label>阻尼 <span class="v" id="g7d">14</span></label><input type="range" id="g7ds" min="5" max="30" value="14"></div>
+  </div>
+  <div class="note"><b>会被打断的运动 → spring。</b>穿心到一半点一下试试。</div>
+</div>
+
+<!-- ============ 参考 ============ -->
+<p style="color:var(--dim); font-size:14px; line-height:2.1; margin-top:90px; padding-top:32px; border-top:1px solid var(--line)">
+  <b style="color:var(--ink)">参考</b><br>
+  · 苹果 Siri fluidDots / wave shader —— iOS 逆向反汇编还原，第 6–8 节的「旋转 / 缩放 / 移动」分层即来自它<br>
+  · spring 引擎 —— <b>chenglou</b> 的 draggable cards：固定 4ms 步进、与帧率解耦、velocity 注入<br>
+  · 「用时长和缓动曲线参数化的动画 API，在底层上与连续、流畅的交互是冲突的。」—— <b>Andy Matuschak</b>，前 Apple UIKit 团队<br>
+  · 可设时长的弹簧 —— SwiftUI <code>spring(duration:bounce:)</code> 与预设 <code>.smooth / .snappy / .bouncy</code><br>
+  · 静止阈值 —— Android DynamicAnimation 的 <code>minimumVisibleChange</code>
+</p>
+
+
+</div>
+
+<script>
+const TAU = Math.PI*2;
+function fit(cv){ const r=cv.getBoundingClientRect(); const dpr=devicePixelRatio||1;
+  cv.width=r.width*dpr; cv.height=cv.height*dpr; const x=cv.getContext('2d'); x.scale(dpr,dpr);
+  cv._w=r.width; cv._h=cv.height/dpr; return x; }
+// 可见性闸门：canvas 滚出视口时让其常驻 rAF 循环跳过物理+绘制，滚回来自动恢复。
+// 避免多个离屏 canvas 每帧空转重绘抢主线程导致掉帧。
+function visOf(cv){ const s={v:true};
+  new IntersectionObserver(e=>{ s.v=e[0].isIntersecting; },{threshold:0}).observe(cv); return s; }
+
+// 解析 spring 闭式解（欠阻尼）：0→1，带 overshoot
+function settleWL(t,w,l){ if(t<=0)return 0; return 1 - Math.exp(-l*t)*Math.cos(w*t); }
+// 临界阻尼：无过冲
+function settleCrit(t,l){ if(t<=0)return 0; return 1 - Math.exp(-l*t)*(1+l*t); }
+// cubic-bezier 求值（Newton），返回 y(x)
+function cbez(x,x1,y1,x2,y2){ let t=x;
+  for(let i=0;i<8;i++){ const u=1-t;
+    const bx=3*u*u*t*x1+3*u*t*t*x2+t*t*t;
+    const dx=3*u*u*x1+6*u*t*(x2-x1)+3*t*t*(1-x2); if(Math.abs(dx)<1e-5)break;
+    t-=(bx-x)/dx; t=Math.max(0,Math.min(1,t)); }
+  const u=1-t; return 3*u*u*t*y1+3*u*t*t*y2+t*t*t; }
+function easeInOut(x){ return cbez(Math.max(0,Math.min(1,x)),0.42,0,0.58,1); }
+
+/* ========== chenglou 范式的 spring 引擎 ==========
+   关键：物理步进固定 4ms，与帧率解耦。一帧里跑 N 个定长步，
+   累加余数不丢时间，吸附阈值内直接归位。这是「任何设备手感一致」的根。 */
+const MS_STEP = 4;
+function Spring(pos, v=0, k=290, b=24){ return {pos, dest:pos, v, k, b}; }
+function springStep(s){
+  const t = MS_STEP/1000;
+  const Fspring = -s.k * (s.pos - s.dest);   // 刚度
+  const Fdamper = -s.b * s.v;                // 阻尼（质量假设为 1）
+  const a = Fspring + Fdamper;
+  s.v = s.v + a*t;
+  s.pos = s.pos + s.v*t;
+}
+// 一个 spring 集合的推进器：传入 springs 数组，自动管 animatedUntil 余数
+function makeStepper(){
+  let animatedUntil = null;
+  return function advance(now, springs){           // now 单位 ms
+    let until = animatedUntil ?? now;
+    const steps = Math.floor((now - until)/MS_STEP); // 跑几步定长步
+    until += steps*MS_STEP;
+    let busy = false;
+    for(const s of springs){
+      for(let i=0;i<steps;i++) springStep(s);
+      if(Math.abs(s.v)<0.01 && Math.abs(s.dest-s.pos)<0.01){ s.pos=s.dest; s.v=0; } // 吸附归位
+      else busy = true;
+    }
+    animatedUntil = busy ? until : null;
+    return busy;
+  };
+}
+
+/* ========== Demo 1: 曲线 vs spring 打断 ==========
+   两条泳道都是「位置 over 真实时间」的曲线：x=时间，y=进度(0=左端,1=右端)。
+   曲线版打断 = retarget(从当前位置重开一段补间，速度被丢弃→折角)；
+   弹簧版打断 = 只改 dest(位置/速度原样留在固定步进的模拟里→平滑调头)。 */
+const D1=(function(){
+  const cv=document.getElementById('cv1'); const ctx=fit(cv);
+  // DOM 轨道 + 滑动球：球用 transform 平移（GPU 合成，最顺滑）；canvas 只画轨迹线
+  const ballC=document.getElementById('d1ballC'), ballS=document.getElementById('d1ballS');
+  const railC=document.getElementById('d1railC'), railS=document.getElementById('d1railS');
+  const BALL=22, PAD=15;
+  let travel=0;
+  function measure(){ travel=Math.max(0, railC.getBoundingClientRect().width - BALL - PAD*2); }
+
+  const dur=1.25;                       // 曲线单程时长(s)
+  let stepper=makeStepper();            // chenglou 固定 4ms 步进，与帧率解耦
+  const spr=Spring(0,0,170,20);         // 弹簧：基于状态，k/b 决定回弹手感
+  let tween={pos:0,from:0,to:0,start:null}; // 曲线：基于时间，start=null 表静止
+  let target=0;
+  let samples=[];                       // {t,c,s}，t 为相对 t0 的秒
+  let marks=[];                          // 打断时刻(s)
+  let t0=null, interruptAt=null, raf=null;
+
+  // 曲线只能「从当前位置重开一段新补间」：当前速度被丢弃 → 折角
+  function retargetTween(to,now){ tween.from=tween.pos; tween.to=to; tween.start=now; }
+  function paintBalls(){
+    ballC.style.transform=`translate3d(${PAD+tween.pos*travel}px,0,0)`;
+    ballS.style.transform=`translate3d(${PAD+spr.pos*travel}px,0,0)`;
+  }
+
+  function reset(){
+    cancelAnimationFrame(raf); raf=null;
+    stepper=makeStepper();
+    tween={pos:0,from:0,to:0,start:null};
+    spr.pos=0; spr.v=0; spr.dest=0;
+    target=0; t0=null; interruptAt=null; samples=[]; marks=[];
+    measure(); paintBalls(); drawChart();
+  }
+  function fire(){
+    reset();
+    t0=performance.now();
+    target=1; retargetTween(1,t0); spr.dest=1;   // 两个一起从左滑向右
+    interruptAt=t0+dur*1000*0.5;                  // 半程自动打断
+    loop();
+  }
+  function interrupt(now){            // 把目标取反（自动半程 / 手动点击共用）
+    target=1-target;
+    retargetTween(target,now);        // 曲线：丢速度，重开补间
+    spr.dest=target;                  // 弹簧：只改目标，动量保留
+    marks.push((now-t0)/1000);
+  }
+  function manualInterrupt(){         // 点轨道任意时刻手动打断
+    const now=performance.now();
+    if(raf==null){ fire(); return; }  // 静止时点击 = 重新演示
+    interrupt(now); interruptAt=null; // 手动打断即取消预约的自动打断
+  }
+  railC.addEventListener('click', manualInterrupt);
+  railS.addEventListener('click', manualInterrupt);
+  window.addEventListener('resize', ()=>{ measure(); paintBalls(); });
+
+  function loop(){
+    const now=performance.now();
+    if(interruptAt!=null && now>=interruptAt){ interrupt(now); interruptAt=null; }
+    // 曲线：位置是「时间的函数」
+    let tweenBusy=false;
+    if(tween.start!=null){
+      const p=Math.min(1,(now-tween.start)/(dur*1000));
+      tween.pos=tween.from+(tween.to-tween.from)*easeInOut(p);
+      if(p>=1) tween.start=null; else tweenBusy=true;
+    }
+    // 弹簧：固定步进推进，velocity 跨段连续继承
+    const springBusy=stepper(now,[spr]);
+    samples.push({t:(now-t0)/1000, c:tween.pos, s:spr.pos});
+    if(samples.length>1400) samples.shift();
+    paintBalls(); drawChart();
+    if(tweenBusy||springBusy||interruptAt!=null) raf=requestAnimationFrame(loop);
+    else raf=null;                    // 双方都停了，定格曲线
+  }
+
+  function drawChart(){
+    const W=cv._w,H=cv._h; ctx.clearRect(0,0,W,H);
+    const padX=10, padTop=14, padBot=10;
+    const laneH=(H-padTop-padBot)/2;
+    const last=samples.length?samples[samples.length-1].t:0;
+    const span=Math.max(2.2,last);               // 时间窗自动伸长(s)
+    const X=t=>padX+(t/span)*(W-padX*2);
+    const Y=(lane,v)=>padTop+lane*laneH+(1-v)*(laneH-22)+6; // v=0 在泳道底, v=1 在顶
+
+    // 0/1 基线 + 泳道标签
+    ctx.lineWidth=1; ctx.font='11px sans-serif';
+    for(let lane=0;lane<2;lane++){
+      ctx.strokeStyle='#26262e';
+      for(const v of [0,1]){ ctx.beginPath(); ctx.moveTo(padX,Y(lane,v)); ctx.lineTo(W-padX,Y(lane,v)); ctx.stroke(); }
+      ctx.fillStyle='#8a8f98';
+      ctx.fillText(lane===0?'曲线':'弹簧', padX+2, padTop+lane*laneH+11);
+    }
+    // 打断时刻虚线
+    ctx.save(); ctx.setLineDash([4,4]); ctx.strokeStyle='#5a5a64';
+    for(const m of marks){ ctx.beginPath(); ctx.moveTo(X(m),padTop); ctx.lineTo(X(m),H-padBot); ctx.stroke(); }
+    ctx.restore();
+    // 轨迹（纯线条，不画末端点）
+    if(samples.length>1){
+      ctx.lineWidth=2.5; ctx.lineJoin='round';
+      for(const [lane,key,col] of [[0,'c','#fc7840'],[1,'s','#4cb782']]){
+        ctx.strokeStyle=col; ctx.beginPath();
+        samples.forEach((s,i)=>{ const x=X(s.t),y=Y(lane,s[key]); i?ctx.lineTo(x,y):ctx.moveTo(x,y); });
+        ctx.stroke();
+      }
+    }
+  }
+  reset(); return {fire,reset};
+})();
+
+/* ========== Demo 2: velocity 继承（DOM 球：translate；速度尾巴/目标刻度都是 div）========== */
+const D2=(function(){
+  const ballC=document.getElementById('d2ballC'), ballS=document.getElementById('d2ballS');
+  const tail=document.getElementById('d2tail'), tick=document.getElementById('d2tick');
+  const kS=document.getElementById('d2ks'),dS=document.getElementById('d2ds');
+  const kV=document.getElementById('d2k'),dV=document.getElementById('d2d');
+  let cPos=0.5,cTarget=0.5,cT0=0,cFrom=0.5;   // 曲线
+  let sPos=0.5,sVel=0,sTarget=0.5;            // spring
+  let last=performance.now()/1000; const vis=visOf(ballC);
+  const BALL=22; let travel=0;
+  function measure(){ travel=Math.max(0, ballC.parentNode.getBoundingClientRect().width - BALL); }
+  window.addEventListener('resize', ()=>{ measure(); draw(); });
+  kS.oninput=()=>kV.textContent=kS.value; dS.oninput=()=>dV.textContent=dS.value;
+  function poke(){ const t=0.12+Math.random()*0.76;
+    cFrom=cPos; cTarget=t; cT0=performance.now()/1000; sTarget=t; }
+  function loop(){
+    const now=performance.now()/1000;
+    if(!vis.v){ last=now; requestAnimationFrame(loop); return; }
+    let dt=now-last; last=now; dt=Math.min(dt,1/30);
+    // 曲线：每次 poke 从 v=0 起 0.5s ease
+    const ct=Math.min(1,(now-cT0)/0.5); cPos=cFrom+(cTarget-cFrom)*easeInOut(ct);
+    // spring：数值积分，velocity 继承
+    const k=+kS.value,d=+dS.value;
+    sVel+=((sTarget-sPos)*k - sVel*d)*dt; sPos+=sVel*dt;
+    draw(); requestAnimationFrame(loop);
+  }
+  function draw(){
+    ballC.style.transform=`translate3d(${cPos*travel}px,0,0)`;
+    ballS.style.transform=`translate3d(${sPos*travel}px,0,0)`;
+    tail.style.transform=`translateY(-50%) scaleX(${sVel*0.02*40})`; // 速度尾巴=继承的 velocity
+    tick.style.transform=`translate3d(${sTarget*travel+BALL/2-1}px,0,0)`; // 目标刻度
+  }
+  measure(); draw(); loop(); return {poke};
+})();
+
+/* ========== Demo 3: 数值 spring vs 解析 spring ========== */
+const D3=(function(){
+  const cv=document.getElementById('cv3'); const ctx=fit(cv);
+  const wS=document.getElementById('d3ws'),zS=document.getElementById('d3zs');
+  const wV=document.getElementById('d3w'),zV=document.getElementById('d3z');
+  let t0=null, realPos=0, realVel=0, raf=null;
+  wS.oninput=()=>wV.textContent=wS.value; zS.oninput=()=>zV.textContent=(zS.value/10).toFixed(1);
+  function fire(){ cancelAnimationFrame(raf); t0=performance.now()/1000; realPos=0; realVel=+zS.value/10; loop(); }
+  function loop(){
+    const now=performance.now()/1000; const t=now-t0;
+    const w=+wS.value, z=+zS.value/10;
+    // 真 spring 数值积分，三处对齐 settleWL(t,w,z)，两条线才会真正重合：
+    //   ω₀²=z²+w²（阻尼后频率正好=w）｜阻尼系数=2z（即 2λ，λ=z）｜初速 v(0)=λ=z（见 fire）
+    const k=z*z+w*w, dt=1/120;
+    for(let s=0;s<2;s++){ realVel += ((1-realPos)*k - realVel*(2*z))*dt; realPos += realVel*dt; }
+    draw(t,w,z);
+    if(t<3) raf=requestAnimationFrame(loop);
+  }
+  let hist=[];
+  function draw(t,w,z){
+    const W=cv._w,H=cv._h; ctx.clearRect(0,0,W,H);
+    const base=H*0.78, amp=H*0.5;
+    ctx.strokeStyle='#26262e'; ctx.beginPath();ctx.moveTo(0,base-amp);ctx.lineTo(W,base-amp);ctx.stroke();
+    ctx.fillStyle='#444'; ctx.font='10px sans-serif'; ctx.fillText('目标=1', 6, base-amp-4);
+    // 解析闭式解整条画出来（衰减率 = λ = z）
+    ctx.strokeStyle='#828fff'; ctx.lineWidth=2.5; ctx.beginPath();
+    for(let i=0;i<=W;i++){ const tt=i/W*3; const v=settleWL(tt,w,z);
+      const y=base-v*amp; i?ctx.lineTo(i,y):ctx.moveTo(i,y);} ctx.stroke();
+    // 真 spring 当前点轨迹（存时间戳，x 按真实时间映射，不依赖刷新率）
+    if(t<0.02)hist=[]; hist.push([t,realPos]);
+    ctx.strokeStyle='#4cb782'; ctx.lineWidth=2.5; ctx.beginPath();
+    hist.forEach(([tt,v],i)=>{ const x=tt/3*W; const y=base-v*amp; i?ctx.lineTo(x,y):ctx.moveTo(x,y);}); ctx.stroke();
+    const px=Math.min(W,t/3*W); ctx.fillStyle='#4cb782'; ctx.beginPath();ctx.arc(px,base-realPos*amp,6,0,TAU);ctx.fill();
+  }
+  draw(0,10,3); return {fire};
+})();
+
+/* ====================================================================
+   6–8 节：fluidDots 三层拆解（6 颗 dot，纯 DOM，transform 驱动）
+   ① 旋转 = linear   ② 缩放 = ease   ③ 移动 = spring（数值积分 + velocity 继承）
+==================================================================== */
+// 共用舞台：轨道环 + 圆心 + 6 颗 dot；set(i, ang, radial, scale) 极坐标摆位
+function dotStage(id){
+  const stage=document.getElementById(id);
+  const ring=stage.querySelector('.fdring');
+  const dots=[];
+  for(let i=0;i<6;i++){ const el=document.createElement('div'); el.className='fdot'; stage.appendChild(el); dots.push(el); }
+  let R=0;
+  function measure(){ const r=stage.getBoundingClientRect();
+    R=Math.min(r.width,r.height)*0.30; ring.style.width=ring.style.height=R*2+'px'; }
+  measure(); window.addEventListener('resize',measure);
+  return { stage, vis:visOf(stage), R:()=>R,
+    set(i,ang,radial,scale){
+      dots[i].style.transform=`translate3d(${Math.cos(ang)*radial}px,${Math.sin(ang)*radial}px,0) scale(${scale})`;
+    } };
+}
+
+/* ========== 6：旋转 = linear ========== */
+const G5=(function(){
+  const st=dotStage('fd5');
+  const t0=performance.now();
+  (function loop(){ requestAnimationFrame(loop); if(!st.vis.v) return;
+    const t=(performance.now()-t0)/1000;
+    const rot=t*0.35;                          // linear：time 直接乘系数，恒定即平静
+    for(let i=0;i<6;i++) st.set(i, i/6*TAU - Math.PI/2 + rot, st.R(), 1);
+  })();
+  return {};
+})();
+
+/* ========== 7：缩放（大小呼吸）= ease ========== */
+const G6=(function(){
+  const st=dotStage('fd6');
+  const t0=performance.now();
+  (function loop(){ requestAnimationFrame(loop); if(!st.vis.v) return;
+    const t=(performance.now()-t0)/1000;
+    const rot=t*0.35;                          // ① 旋转照常：linear
+    for(let i=0;i<6;i++){
+      // ② 缩放呼吸：三角波定节奏，ease 定质感；相位 i*0.37 错开 → 不像同一只肺
+      const tri=Math.abs(((t/2.2 + i*0.37)%1)*2-1);
+      st.set(i, i/6*TAU - Math.PI/2 + rot, st.R(), 0.72+0.56*easeInOut(tri));
+    }
+  })();
+  return {};
+})();
+
+/* ========== 8：移动（穿心）= spring + velocity（6 个独立 spring，数值积分喂 transform） ========== */
+const G7=(function(){
+  const st=dotStage('fd7');
+  const sS=document.getElementById('g7ss'), sV=document.getElementById('g7s');
+  const dS=document.getElementById('g7ds'), dV=document.getElementById('g7d');
+  const vS=document.getElementById('g7vs'), vV=document.getElementById('g7v');
+  sS.oninput=()=>sV.textContent=(+sS.value/100).toFixed(2);
+  dS.oninput=()=>dV.textContent=dS.value;
+  vS.oninput=()=>vV.textContent=(+vS.value/10).toFixed(1);
+  const springs=[]; for(let i=0;i<6;i++) springs.push(Spring(0,0,140,14));
+  const step=makeStepper();
+  let pending=[];                              // 延时事件 → stagger 错相位（改目标 或 注入速度）
+  function schedule(at,i,dest,k,b){ pending.push({at,i,dest,k,b}); }
+  function scheduleV(at,i,addV){ pending.push({at,i,addV}); }
+  function fly(){                              // 全员穿心：错开出发、错开返回
+    const now=performance.now(), stg=(+sS.value/100)*1000, b=+dS.value;
+    pending=[]; flinging=false;
+    for(let i=0;i<6;i++){ schedule(now+i*stg,i,1,140,b); schedule(now+1500+i*stg,i,0,140,b); }
+  }
+  function gatherBurst(){                      // 同一组 spring 改目标：聚合（0.5=圆心）→ 爆开（低阻尼弹回）
+    const now=performance.now();
+    pending=[]; flinging=false;
+    for(let i=0;i<6;i++){ schedule(now,i,0.5,200,26); schedule(now+850,i,0,160,7); schedule(now+2600,i,0,140,+dS.value); }
+  }
+  let flinging=false;
+  function fling(){                            // 只给 velocity：不写 A→B，注入初速度，能否到对面由速度决定
+    const now=performance.now(), stg=(+sS.value/100)*1000, v=+vS.value/10;
+    pending=[];
+    flinging=true;
+    for(let i=0;i<6;i++) scheduleV(now+i*stg, i, springs[i].dest>0.5 ? -v : v); // 朝对侧甩
+  }
+  st.stage.addEventListener('click',()=>{      // 打断：目标取反，velocity 原样留下 → 软调头
+    pending=[];
+    flinging=false;
+    for(const s of springs) s.dest = s.dest>0.5 ? 0 : 1;
+  });
+  document.getElementById('g7fly').onclick=fly;
+  document.getElementById('g7gb').onclick=gatherBurst;
+  document.getElementById('g7fling').onclick=fling;
+  const t0=performance.now();
+  (function loop(){ requestAnimationFrame(loop); if(!st.vis.v) return;
+    const now=performance.now(), t=(now-t0)/1000;
+    pending=pending.filter(p=>{ if(now<p.at) return true;
+      const s=springs[p.i];
+      if(p.addV!=null){ s.v+=p.addV; }         // 注入速度：dest 不动，纯物理
+      else { s.dest=p.dest; s.k=p.k; s.b=p.b; }
+      return false; });
+    step(now,springs);
+    // fling 吸附：冲过圆心（0.5）就把目标改到对侧 → 和穿心一样的落点，但由 velocity 决定去留
+    if(flinging){
+      let active=false;
+      for(const s of springs){
+        if(s.dest<0.25 && s.pos>0.5) s.dest=1;
+        else if(s.dest>0.75 && s.pos<0.5) s.dest=0;
+        if(Math.abs(s.v)>0.01) active=true;
+      }
+      if(!active && !pending.length) flinging=false;
+    }
+    const rot=t*0.35;                          // ① 旋转：linear 照常
+    for(let i=0;i<6;i++){
+      const tri=Math.abs(((t/2.2 + i*0.37)%1)*2-1);
+      const scale=0.72+0.56*easeInOut(tri);    // ② 缩放呼吸：ease 照常——打断移动它也不眨眼
+      const radial=st.R()*(1-2*springs[i].pos);// ③ progress：0=原位 0.5=圆心 1=对侧（穿心）
+      st.set(i, i/6*TAU - Math.PI/2 + rot, radial, scale);
+    }
+  })();
+  return {};
+})();
+
+/* ========== 可设时长的弹簧：duration / bounce 反推 k,b（静态曲线）========== */
+const DT=(function(){
+  const cv=document.getElementById('cvt'); const ctx=fit(cv);
+  const tS=document.getElementById('dtts'),bS=document.getElementById('dtbs');
+  const tV=document.getElementById('dtt'),bV=document.getElementById('dtb');
+  let kk=100,bb=10;
+  // SwiftUI 思路：ω=2π/duration → k=ω²；ζ=1−bounce → b=2ζω
+  function recalc(){ const dur=+tS.value/10, bounce=+bS.value/100;
+    tV.textContent=dur.toFixed(1); bV.textContent=bounce.toFixed(2);
+    const w=TAU/dur, zeta=Math.max(0.0001,1-bounce); kk=w*w; bb=2*zeta*w; draw(dur); }
+  tS.oninput=recalc; bS.oninput=recalc;
+  function draw(dur){
+    const W=cv._w,H=cv._h; ctx.clearRect(0,0,W,H);
+    const base=H*0.84, amp=H*0.62;
+    ctx.strokeStyle='#2a2c30'; ctx.lineWidth=1; ctx.beginPath();ctx.moveTo(0,base-amp);ctx.lineTo(W,base-amp);ctx.stroke();
+    ctx.fillStyle='#8a8f98'; ctx.font='10px -apple-system,sans-serif'; ctx.fillText('目标',6,base-amp-5);
+    const durX=Math.min(W, dur/3*W);
+    ctx.strokeStyle='#3a3d42'; ctx.setLineDash([4,4]); ctx.beginPath();ctx.moveTo(durX,0);ctx.lineTo(durX,H);ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle='#8a8f98'; ctx.fillText('duration', durX+6, 14);
+    const dt=4/1000; let pos=0,v=0; const pts=[];
+    for(let t=0;t<3;t+=dt){ const a=-kk*(pos-1)-bb*v; v+=a*dt; pos+=v*dt; pts.push(pos); }
+    ctx.lineJoin='round'; ctx.strokeStyle='#828fff'; ctx.lineWidth=2.5; ctx.beginPath();
+    pts.forEach((p,i)=>{ const x=i*dt/3*W, y=base-p*amp; i?ctx.lineTo(x,y):ctx.moveTo(x,y);}); ctx.stroke();
+  }
+  recalc(); return {};
+})();
+
+addEventListener('resize',()=>location.reload());
+</script>
+</body>
+</html>
