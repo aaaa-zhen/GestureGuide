@@ -386,13 +386,55 @@
 
   @media(max-width:640px){
     body{font-size:17px}
-    .doc{padding:56px 22px 100px}
+    .doc{padding:56px 20px 100px}
     h1{font-size:28px} h2{font-size:22px}
     .terms .row{flex-direction:column;gap:4px}
     .terms .t{flex:none}
     .figures{flex-direction:column}
     .figures div{padding:18px 12px}
     .figures div:not(:last-child){border-right:none;border-bottom:1px solid var(--line)}
+
+    /* 展廊：双列 → 单列 */
+    .gallery{grid-template-columns:1fr;gap:14px}
+    .render .inner{padding:22px 18px 26px}
+    .render .cap{padding:14px 18px 0}
+
+    /* 巨型数字别撑破窄屏 */
+    .r-bignum{font-size:44px}
+    .r-num{font-size:36px}
+    .weather .temp{font-size:56px}
+
+    /* 图集轮播：负边距对齐新的 inner padding */
+    .r-coll{margin:6px -18px 12px;padding:0 18px 4px}
+    .r-coll figure{flex:0 0 78%}
+
+    /* 代码块：可横向滚动，字号略收 */
+    .r-code pre{font-size:12px;padding:6px 14px 14px}
+    .r-code .rc-bar{padding:12px 14px 4px}
+
+    /* 表格略收，给内容更多宽度 */
+    .r-tbl{font-size:14px}
+    .r-tbl td,.r-tbl th{padding-right:8px}
+
+    /* 驾照卡：照片缩小，字段不挤 */
+    .r-license{padding:16px 16px 14px}
+    .r-license .lc-body{gap:12px}
+    .r-license .lc-photo{flex:0 0 70px;height:90px}
+
+    /* 动画 demo 参数面板：标签变窄，滑块留足空间 */
+    .anim-demo{margin:16px 0 24px}
+    .ad-params{padding:14px 14px}
+    .ad-prow{gap:9px}
+    .ad-prow label{flex:0 0 96px;font-size:12px}
+    .ad-prow .pv{flex:0 0 46px;font-size:12px}
+
+    /* 引子大字号收一点 */
+    .ask{font-size:18px}
+    .r-pull{font-size:19px}
+
+    /* 长符号清单（richText… 等）在窄屏允许断行，避免横向溢出 */
+    li{overflow-wrap:anywhere}
+    code{white-space:normal;overflow-wrap:anywhere}
   }
 </style>
 </head>
