@@ -1,0 +1,1386 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>从一句话到一张卡片 · 苹果 Siri 生成式 UI 是怎么工作的</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<style>
+  :root{
+    --ink:#1a1a1a;
+    --ink-soft:#3a3a3a;
+    --ink-dim:#9a9a9a;
+    --line:#e6e6e6;
+    --bg:#ffffff;
+    --code-bg:#f6f6f6;
+    --mono:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"PingFang SC","Segoe UI","Helvetica Neue",
+           "Microsoft YaHei",sans-serif;
+    /* 圆角阶梯：大卡 / 中容器 / 小元素 / 行内 */
+    --r-card:28px;
+    --r-box:18px;
+    --r-chip:12px;
+    --r-tag:7px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:var(--sans);
+    font-size:18px;
+    line-height:1.9;
+    -webkit-font-smoothing:antialiased;
+    text-rendering:optimizeLegibility;
+  }
+  .doc{max-width:680px;margin:0 auto;padding:84px 28px 140px}
+
+  /* 标题 */
+  h1{font-size:34px;font-weight:700;line-height:1.35;letter-spacing:-.01em;
+     margin-bottom:8px}
+  .sub{font-size:16px;color:var(--ink-dim);margin-bottom:64px;line-height:1.7}
+
+  h2{font-size:25px;font-weight:700;line-height:1.4;letter-spacing:-.01em;
+     margin:72px 0 26px}
+
+  /* 段落 — 大间距呼吸感 */
+  p{margin-bottom:26px;color:var(--ink-soft)}
+  p:last-child{margin-bottom:0}
+  strong{font-weight:700;color:var(--ink)}
+  a{color:var(--ink);text-decoration:underline;text-underline-offset:3px;
+    text-decoration-thickness:1px}
+
+  /* 行内代码 */
+  code{font-family:var(--mono);font-size:.84em;background:var(--code-bg);
+       padding:2px 6px;border-radius:var(--r-tag);color:var(--ink);white-space:nowrap}
+
+  /* 代码块 */
+  pre{font-family:var(--mono);font-size:14px;line-height:1.75;background:var(--code-bg);
+      border-radius:var(--r-box);padding:20px 22px;margin:0 0 26px;overflow-x:auto;color:var(--ink)}
+  pre .c{color:var(--ink-dim)}
+
+  /* 引导问句 / 强调段 */
+  .ask{font-size:20px;font-weight:600;color:var(--ink);margin-bottom:26px}
+
+  /* 开篇说明 / 编者按 */
+  .note-box{background:#f7f7f7;border-radius:var(--r-box);padding:22px 24px;margin:0 0 56px}
+  .note-box p{font-size:15px;line-height:1.75;color:var(--ink-soft);margin-bottom:12px}
+  .note-box p:last-child{margin-bottom:0}
+  .note-box .nb-h{font-size:13px;font-weight:700;color:var(--ink);letter-spacing:.02em;
+        text-transform:none;margin-bottom:10px;display:block}
+
+  /* 列表 */
+  ul,ol{margin:0 0 26px;padding-left:0;list-style:none}
+  li{margin-bottom:16px;color:var(--ink-soft);padding-left:28px;position:relative}
+  li::before{content:"";position:absolute;left:6px;top:13px;width:6px;height:6px;
+             border-radius:50%;background:var(--ink-dim)}
+  li strong{display:inline}
+
+  /* ===== 四级降级 · 内嵌演示 ===== */
+  .layer{margin:0 0 18px;padding:24px;border:1px solid var(--line);border-radius:var(--r-card);background:#fff}
+  .layer-hd{display:flex;align-items:baseline;gap:12px;margin-bottom:10px}
+  .layer-hd .lv{font-family:var(--mono);font-size:12px;font-weight:700;color:#fff;
+        background:var(--ink);border-radius:var(--r-chip);padding:3px 8px;flex:0 0 auto}
+  .layer-hd h4{font-size:18px;font-weight:700;color:var(--ink)}
+  .layer > p{font-size:15.5px;margin-bottom:18px}
+  .layer > p:last-child{margin-bottom:0}
+
+  /* 日间 chat 演示舞台 */
+  .demo{background:#f5f5f5;border-radius:var(--r-card);padding:28px 24px;margin-top:4px;
+        color:var(--ink);font-family:-apple-system,system-ui,sans-serif;
+        display:flex;flex-direction:column;align-items:center;gap:20px}
+  .demo .q{align-self:flex-end;background:rgba(118,118,128,.16);padding:11px 16px;
+        border-radius:var(--r-card) var(--r-card) 8px var(--r-card);font-size:15px;color:var(--ink);max-width:85%}
+  .demo .stage{width:100%}
+  .demo-note{font-size:13.5px;color:var(--ink-dim);line-height:1.6;text-align:center;max-width:460px}
+  .demo-note code{font-size:.85em;background:rgba(0,0,0,.05);color:var(--ink-soft);
+        padding:1px 5px;border-radius:var(--r-tag)}
+
+  /* 天气卡（layer1 原样：temp 64 / 右上太阳 右下 meta） */
+  .weather{background:linear-gradient(160deg,#4a90e2,#7bb5f0);border-radius:var(--r-card);
+        padding:22px;position:relative;overflow:hidden;color:#fff}
+  .weather .city{font-size:17px;font-weight:600;display:flex;align-items:center;gap:6px}
+  .weather .temp{font-size:64px;font-weight:300;line-height:1.05;margin-top:4px}
+  .weather .meta{position:absolute;right:22px;bottom:22px;text-align:right;font-size:14px;opacity:.92}
+  .weather .sun{position:absolute;right:22px;top:22px;font-size:30px}
+
+  /* 纯文字答案（layer2 原样：21px） */
+  .answer{font-size:21px;line-height:1.45;color:var(--ink)}
+  .answer b{font-weight:600}
+  .answer .note{color:var(--ink-dim);font-size:15px;margin-top:10px}
+
+  /* 第三方自绘卡（layer3：深蓝渐变 / price 34 / badge —— 故意保留深色，凸显「第三方异质卡」） */
+  .lead{font-size:19px;line-height:1.4;margin-bottom:14px;color:var(--ink)}
+  .customview{border-radius:var(--r-card);overflow:hidden;position:relative}
+  .customview .badge{position:absolute;top:12px;left:12px;z-index:2;background:rgba(0,0,0,.4);
+    font-size:11px;padding:4px 9px;border-radius:var(--r-chip);color:#cfcfd6;backdrop-filter:blur(8px)}
+  .ride{background:linear-gradient(135deg,#1a1a2e,#16213e);padding:44px 20px 20px;color:#fff}
+  .ride .top{display:flex;justify-content:space-between;align-items:center}
+  .ride .price{font-size:32px;font-weight:700;color:#fff;letter-spacing:-.01em}
+  .ride .eta{background:#0a84ff;color:#fff;font-size:13px;font-weight:600;padding:7px 14px;border-radius:999px}
+  .ride .car{display:flex;align-items:center;gap:13px;margin-top:16px;
+    background:rgba(255,255,255,.07);padding:14px 16px;border-radius:var(--r-box)}
+  .ride .car .ic{flex:0 0 auto;width:38px;height:38px;border-radius:var(--r-chip);
+    background:rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;color:#fff}
+  .ride .car .ic svg{width:22px;height:22px;display:block}
+  .ride .car .info{flex:1;min-width:0}
+  .ride .car .info .name{font-weight:600;font-size:16px}
+  .ride .car .info .sub{font-size:13px;color:#9a9aac;margin-top:3px}
+
+  /* 兜底（layer4 风格） */
+  .raw{font-size:17px;line-height:1.6;color:var(--ink)}
+  .badtag{font-family:var(--mono);font-size:.82em;background:rgba(255,69,58,.12);color:#d70015;
+       padding:1px 5px;border-radius:var(--r-tag);text-decoration:line-through}
+  .fall-arrow{text-align:center;font-size:13px;color:var(--ink-dim);margin:6px 0;font-family:var(--mono)}
+  .fall-arrow code{font-size:.9em;background:rgba(0,0,0,.05);color:var(--ink-soft);padding:1px 5px;border-radius:var(--r-tag)}
+  .final-ans{font-size:21px;line-height:1.45;color:var(--ink)}
+
+  /* 编号步骤 */
+  ol.steps{counter-reset:s}
+  ol.steps li{counter-increment:s;padding-left:38px}
+  ol.steps li::before{content:counter(s);background:none;color:var(--ink);
+        font-weight:700;font-size:16px;width:auto;height:auto;left:0;top:0;
+        font-family:var(--mono)}
+
+  /* 分隔 */
+  hr{border:none;border-top:1px solid var(--line);margin:64px 0}
+
+  /* 章节小标 */
+  .act-label{font-family:var(--mono);font-size:13px;color:var(--ink-dim);
+             letter-spacing:.04em;margin-top:72px;margin-bottom:0}
+  .act-label + h2{margin-top:8px}
+
+  /* 关键术语词典样式（成对） */
+  .terms{margin:0 0 26px}
+  .terms .row{display:flex;gap:16px;padding:14px 0;border-top:1px solid var(--line)}
+  .terms .row:last-child{border-bottom:1px solid var(--line)}
+  .terms .t{font-family:var(--mono);font-size:14px;font-weight:600;flex:0 0 168px;
+            color:var(--ink);line-height:1.6}
+  .terms .d{font-size:16px;color:var(--ink-soft);line-height:1.6}
+
+  /* 引文式洞察 — 左竖线，无背景色 */
+  blockquote{border-left:3px solid var(--ink);padding-left:22px;margin:0 0 26px}
+  blockquote p{margin-bottom:14px}
+  blockquote p:last-child{margin-bottom:0}
+  blockquote .q-label{font-weight:700;color:var(--ink);display:block;margin-bottom:8px}
+
+  /* 数字小结 */
+  .figures{display:flex;gap:0;margin:0 0 26px;border-top:1px solid var(--line);
+           border-bottom:1px solid var(--line)}
+  .figures div{flex:1;padding:22px 12px;text-align:center}
+  .figures div:not(:last-child){border-right:1px solid var(--line)}
+  .figures .n{font-size:30px;font-weight:700;line-height:1;color:var(--ink)}
+  .figures .l{font-size:13px;color:var(--ink-dim);margin-top:10px;line-height:1.5}
+
+  /* ===== 渲染示例展廊 · 日间 chat 风 ===== */
+  .gallery{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin:8px 0 26px}
+  .gallery.full{grid-template-columns:1fr}
+  .render{border-radius:var(--r-card);overflow:hidden;background:#f5f5f5;color:var(--ink)}
+  .render .cap{font-family:var(--mono);font-size:11px;color:var(--ink-dim);
+        padding:16px 26px 0;letter-spacing:.03em}
+  .render .inner{padding:28px 26px 32px;font-family:-apple-system,system-ui,sans-serif}
+
+  /* 用户提问气泡 */
+  .r-q{display:inline-block;background:rgba(118,118,128,.16);color:var(--ink);font-size:15px;
+       padding:10px 16px;border-radius:var(--r-card) var(--r-card) 8px var(--r-card);margin-bottom:22px;float:right;max-width:88%}
+  .r-qwrap{overflow:hidden}
+
+  /* 标题层级 */
+  .r-h1{font-size:25px;font-weight:700;letter-spacing:-.02em;line-height:1.3;margin:6px 0;color:var(--ink)}
+  .r-h2{font-size:20px;font-weight:600;line-height:1.35;margin:6px 0;color:var(--ink)}
+  .r-h3{font-size:12.5px;font-weight:700;letter-spacing:.04em;margin:9px 0;color:var(--ink)}
+  .r-h456{font-size:12.5px;font-weight:600;color:var(--ink-dim);letter-spacing:.04em;margin:9px 0}
+  .r-body{font-size:17px;line-height:1.55;color:var(--ink);margin:6px 0}
+  .r-title{font-size:23px;font-weight:700;letter-spacing:-.02em;line-height:1.3;margin-top:16px;color:var(--ink)}
+  .r-sub{font-size:23px;font-weight:700;letter-spacing:-.02em;line-height:1.3;color:var(--ink-dim)}
+
+  /* callout 大数值 */
+  .r-num{font-size:42px;font-weight:600;letter-spacing:-.02em;line-height:1.05;
+        display:flex;align-items:baseline;gap:4px;color:var(--ink)}
+  .r-num .u{font-size:19px;font-weight:500;color:var(--ink-dim)}
+  .r-divline{border:none;border-top:1px solid var(--line);margin:16px 0}
+  .r-dim{font-size:16px;color:var(--ink-soft);line-height:1.6}
+
+  /* pullQuote 衬线 */
+  .r-pull{font-family:"New York","Times New Roman",ui-serif,Georgia,serif;
+        font-size:21px;line-height:1.4;text-align:center;font-weight:500;margin:14px 6px 8px;color:var(--ink)}
+  .r-pull-by{text-align:center;font-size:14px;color:var(--ink-dim);margin-bottom:6px}
+
+  /* list */
+  .r-list{list-style:none;padding:0;margin:0}
+  .r-list li{display:flex;gap:12px;font-size:17px;line-height:1.55;margin-bottom:14px;padding:0;color:var(--ink)}
+  .r-list li::before{content:none}
+  .r-list li .rn{color:var(--ink-dim);min-width:14px}
+  .r-list li b{font-weight:600}.r-list li .rd{color:var(--ink-soft)}
+
+  /* table */
+  .r-tbl{width:100%;border-collapse:collapse;font-size:15px}
+  .r-tbl th{text-align:left;font-size:11px;font-weight:700;color:var(--ink-dim);
+        letter-spacing:.05em;text-transform:uppercase;padding:0 12px 11px 0}
+  .r-tbl td{padding:12px 12px 12px 0;color:var(--ink)}
+  .r-tbl tbody tr:nth-child(odd){background:rgba(0,0,0,.035)}
+  .r-tbl td:first-child,.r-tbl th:first-child{padding-left:10px;border-radius:var(--r-chip) 0 0 var(--r-chip)}
+  .r-tt{font-size:21px;font-weight:700;line-height:1.3;color:var(--ink)}
+  .r-ts{font-size:21px;font-weight:700;line-height:1.3;color:var(--ink-dim);margin-bottom:16px}
+
+  /* code（richTextCode：语言标签 + Copy + 高亮） */
+  .r-code{background:#f0eef4;border-radius:14px;overflow:hidden;margin:6px 0 4px}
+  .r-code .rc-bar{display:flex;align-items:center;justify-content:space-between;
+        padding:13px 16px 4px;font-family:var(--mono);font-size:13px;color:var(--ink-dim)}
+  .r-code .rc-copy{display:flex;align-items:center;gap:5px;color:var(--ink-dim);
+        font-family:var(--mono);font-size:13px;background:none;border:none;cursor:pointer;
+        padding:2px 4px;margin:-2px -4px;border-radius:6px;transition:color .15s,background .15s}
+  .r-code .rc-copy:hover{color:var(--ink-soft);background:rgba(0,0,0,.05)}
+  .r-code .rc-copy svg{width:15px;height:15px}
+  .r-code .rc-copy.copied{color:#3a9a4a}
+  .r-code pre{margin:0;background:none;border-radius:0;padding:6px 16px 16px;font-size:13px;
+        line-height:1.7;overflow-x:auto;color:#2a2330}
+  .r-code .kw{color:#9a3fc0}     /* 关键字 紫 */
+  .r-code .num{color:#1e54e0}    /* 数字 蓝 */
+  .r-code .cm{color:#3a9a4a}     /* 注释 绿 */
+  .r-code .fn{color:#1e54e0}     /* 函数/类型 蓝 */
+
+  /* math */
+  .r-mi{font-family:"New York",ui-serif,Georgia,serif;font-style:italic;font-size:17px}
+  .r-mb{text-align:center;font-family:"New York",ui-serif,Georgia,serif;font-style:italic;
+        font-size:19px;margin:20px 0;color:var(--ink)}
+  .r-frac{display:inline-flex;flex-direction:column;text-align:center;vertical-align:middle;margin:0 4px}
+  .r-frac .t{border-bottom:1.5px solid var(--ink);padding:0 8px 3px}
+  .r-frac .b{padding:3px 8px 0}
+
+  /* 图片 */
+  .r-img{width:100%;height:180px;object-fit:cover;border-radius:var(--r-box);margin:6px 0 10px;display:block}
+  .r-imgcap{font-size:14px;font-weight:600;line-height:1.5;color:var(--ink)}
+  .r-imgcap .s{font-weight:400;color:var(--ink-dim)}
+
+  /* 大数值答案（license：question → 标题 → 巨型号码 → 图片） */
+  .r-bignum{font-size:54px;font-weight:600;letter-spacing:-.01em;line-height:1.05;color:var(--ink);margin:8px 0 18px}
+
+  /* imageCollection · 横向 montage 轮播 */
+  .r-coll{display:flex;gap:12px;overflow-x:auto;margin:6px -26px 12px;padding:0 26px 4px;
+        scrollbar-width:none}
+  .r-coll::-webkit-scrollbar{display:none}
+  .r-coll figure{flex:0 0 64%;margin:0}
+  .r-coll img{width:100%;height:170px;object-fit:cover;border-radius:var(--r-box);display:block}
+  .r-coll figcaption{font-size:14px;font-weight:600;color:var(--ink);margin-top:8px}
+  .r-coll figcaption .s{font-weight:400;color:var(--ink-dim);display:block}
+
+  /* CSS 复刻驾照卡 */
+  .r-license{margin:10px 0 4px;border-radius:16px;overflow:hidden;position:relative;
+        padding:18px 20px 16px;font-family:"Helvetica Neue",Arial,sans-serif;color:#262030;
+        background:
+          radial-gradient(120% 140% at 0% 0%, rgba(244,210,224,.95) 0%, rgba(232,214,238,.6) 38%, rgba(214,224,242,0) 70%),
+          radial-gradient(120% 150% at 100% 100%, rgba(206,222,244,.95) 0%, rgba(224,216,238,.5) 45%, rgba(244,224,232,0) 75%),
+          linear-gradient(135deg,#f4e6ec 0%,#e9e0f0 50%,#dfe8f4 100%);
+        box-shadow:inset 0 1px 0 rgba(255,255,255,.7), inset 0 0 0 1px rgba(255,255,255,.35)}
+  /* 防伪底纹（极淡的斜向 guilloché 暗示） */
+  .r-license::before{content:"";position:absolute;inset:0;pointer-events:none;opacity:.5;
+        background:repeating-linear-gradient(115deg, rgba(255,255,255,.18) 0 1px, transparent 1px 7px),
+                   repeating-linear-gradient(65deg, rgba(120,90,150,.05) 0 1px, transparent 1px 9px)}
+  .r-license > *{position:relative;z-index:1}
+  .r-license .lc-hd{display:flex;align-items:center;gap:10px;justify-content:center;
+        font-size:11.5px;font-weight:700;letter-spacing:.03em;color:#1c2a55;text-align:center;
+        line-height:1.35;margin-bottom:14px}
+  .r-license .lc-ch{flex:0 0 auto;width:38px;height:24px;border-radius:999px;
+        border:1.5px solid #1c2a55;display:flex;align-items:center;justify-content:center;
+        font-size:13px;font-weight:800;letter-spacing:.04em;color:#1c2a55;
+        background:linear-gradient(160deg,rgba(255,255,255,.7),rgba(255,255,255,.35))}
+  .r-license .lc-body{display:flex;gap:16px;align-items:flex-start}
+  .r-license .lc-photo{flex:0 0 82px;height:104px;border-radius:10px;
+        background:linear-gradient(155deg,#c4bcc9 0%,#9a93a4 60%,#857e90 100%);
+        display:flex;align-items:flex-end;justify-content:center;overflow:hidden;
+        box-shadow:inset 0 2px 6px rgba(0,0,0,.18), inset 0 0 0 1px rgba(255,255,255,.25)}
+  .r-license .lc-photo svg{width:58px;height:58px;color:rgba(255,255,255,.62);margin-bottom:-6px}
+  .r-license .lc-fields{flex:1;font-size:12.5px;line-height:1.65;color:#262030;
+        display:flex;flex-direction:column;gap:6px}
+  .r-license .lc-fields > div{display:flex;gap:9px;align-items:baseline}
+  .r-license .lc-fields .n{flex:0 0 22px;text-align:right;color:#7a7286;font-weight:500;
+        font-variant-numeric:tabular-nums}
+  .r-license .lc-fields .n.sub{flex:0 0 auto;margin-left:14px}
+  .r-license .lc-fields b{font-weight:700;font-size:13.5px}
+  .r-license .lc-foot{font-size:11px;color:#5a5366;margin-top:14px;
+        border-top:1px solid rgba(28,42,85,.14);padding-top:8px;letter-spacing:.03em;
+        font-variant-numeric:tabular-nums}
+
+  /* ===== 第四幕 · 动画演示（复用 .render 日间 chat 风）===== */
+  .anim-demo{margin:18px 0 26px}
+  .ad-tabs{display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+  .ad-tab{font-family:var(--mono);font-size:12.5px;color:var(--ink-dim);background:#f0f0f2;
+        border:1px solid var(--line);border-radius:9px;padding:7px 12px;cursor:pointer;transition:.15s}
+  .ad-tab.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .ad-label{font-family:var(--mono);font-size:12px;color:var(--ink-dim);flex:1}
+  .ad-replay{margin-left:auto;width:34px;height:34px;display:flex;align-items:center;justify-content:center;
+        color:var(--ink-soft);background:#f0f0f2;border:1px solid var(--line);border-radius:50%;cursor:pointer;
+        transition:.15s;flex:0 0 auto}
+  .ad-replay:hover{background:#e6e6e8;color:var(--ink)}
+  .ad-replay:active{transform:rotate(-40deg)}
+  .ad-replay svg{width:16px;height:16px;display:block}
+  .ad-out{font-size:17px;line-height:1.6;color:var(--ink);min-height:54px;white-space:normal;word-break:normal;overflow-wrap:break-word}
+  .ad-out .u{display:inline-block;will-change:transform,opacity,filter}
+  .ad-out .sp{display:inline}   /* 空格用普通 inline,允许在此换行 */
+  /* 参数 slider 面板 */
+  .ad-params{background:#f0f0f2;border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin-top:12px}
+  .ad-pgroup{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--ink);letter-spacing:.04em;margin:14px 0 10px;text-transform:uppercase}
+  .ad-pgroup:first-child{margin-top:0}
+  .ad-prow{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+  .ad-prow:last-child{margin-bottom:0}
+  .ad-prow label{font-size:13px;color:var(--ink-soft);flex:0 0 130px}
+  .ad-prow input[type=range]{flex:1;accent-color:var(--ink)}
+  .ad-prow .pv{font-family:var(--mono);font-size:12.5px;flex:0 0 52px;text-align:right;color:var(--ink)}
+  .ad-card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:15px 17px;
+        margin-bottom:10px;will-change:transform,opacity}
+  .ad-card:last-child{margin-bottom:0}
+  .ad-card .ct{font-size:13px;color:var(--ink-dim);margin-bottom:4px}
+  .ad-card .cn{font-size:30px;font-weight:600;letter-spacing:-.01em;display:flex;align-items:baseline;gap:3px}
+  .ad-card .cn .u{font-size:14px;color:var(--ink-dim)}
+  .ad-card.wx{color:#fff;border:none;background:linear-gradient(160deg,#4a90e2,#74b3f0)}
+  .ad-card.wx .ct{color:rgba(255,255,255,.85)}
+  .ad-card.wx .cn .u{color:rgba(255,255,255,.85)}
+  .ad-wx{margin-bottom:12px}
+  .ad-wx:last-child{margin-bottom:0}
+
+  /* ── 组合 demo · 浅色舞台 + 专属卡片-demo 卡（适配浅色）── */
+  .cc{--card-radius:22px;margin-bottom:12px;will-change:transform,opacity}
+  .cc:last-child{margin-bottom:0}
+  /* 天气卡保持蓝渐变（浅色底上也好看）*/
+  .cc.weatherC{border-radius:var(--card-radius);padding:18px 20px;
+        background:linear-gradient(160deg,#4a90e2 0%,#74b3f0 100%);color:#fff;position:relative}
+  .cc.weatherC .top{display:flex;justify-content:space-between;align-items:flex-start}
+  .cc.weatherC .city{font-size:17px;font-weight:600}
+  .cc.weatherC .ic{font-size:28px;line-height:1}
+  .cc.weatherC .temp{font-size:56px;font-weight:200;line-height:1.02;letter-spacing:-.02em;margin-top:2px}
+  .cc.weatherC .bottom{display:flex;justify-content:space-between;align-items:baseline;margin-top:4px}
+  .cc.weatherC .cond{font-size:16px;font-weight:500}
+  .cc.weatherC .hl{font-size:14px;opacity:.9}
+  /* 股票卡：原版深色底（专属卡片-demo）*/
+  .cc.stockC{background:#1c1c1e;border-radius:var(--card-radius);padding:16px 18px;color:#fff}
+  .cc.stockC .stk-head{display:flex;align-items:baseline;gap:8px}
+  .cc.stockC .stk-name{font-size:16px;font-weight:600;color:#fff}
+  .cc.stockC .stk-code{font-size:13px;color:rgba(255,255,255,.62)}
+  .cc.stockC .stk-price{font-size:36px;font-weight:600;letter-spacing:-.02em;margin-top:6px;line-height:1;color:#ff453a}
+  .cc.stockC .stk-change{font-size:14px;font-weight:600;margin-top:7px;color:#ff453a}
+
+  /* 图片揭示 */
+  .ad-reveal{position:relative;width:100%;height:210px;border-radius:18px;overflow:hidden;background:#e9e9ea}
+  .ad-reveal img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+  /* 未揭区：纯白磨砂盖在图上（极淡图影）*/
+  .ad-reveal .frost{filter:blur(30px) brightness(1.45) saturate(.5);opacity:.5;transform:scale(1.15)}
+  /* 清晰层：用 SVG mask 从上往下揭开，边缘带高斯模糊（柔和波浪）*/
+  .ad-reveal .clear{will-change:opacity}
+
+  /* Elasticity demo：图片占位→撑开→下面块弹性被推 */
+  .el-stack .el-img{width:100%;border-radius:14px;overflow:hidden;position:relative;
+        margin-bottom:10px;will-change:height;background:#e4e4e6}
+  .el-stack .el-img img{width:100%;height:100%;object-fit:cover;display:block}
+  /* 骨架屏占位（微光扫过，不用 emoji）*/
+  .el-stack .el-img .ph{position:absolute;inset:0;
+        background:linear-gradient(100deg,#e4e4e6 30%,#f0f0f2 50%,#e4e4e6 70%);
+        background-size:200% 100%;animation:elShimmer 1.4s infinite linear}
+  @keyframes elShimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+  .el-stack .el-blk{will-change:transform}
+  .el-stack .el-title{font-size:23px;font-weight:700;letter-spacing:-.01em;color:var(--ink);margin-bottom:6px}
+  .el-stack .el-body{font-size:16px;line-height:1.55;color:var(--ink-soft)}
+
+  .footer{margin-top:80px;padding-top:28px;border-top:1px solid var(--line);
+          font-family:var(--mono);font-size:12.5px;color:var(--ink-dim);line-height:1.9}
+
+  @media(max-width:640px){
+    body{font-size:17px}
+    .doc{padding:56px 22px 100px}
+    h1{font-size:28px} h2{font-size:22px}
+    .terms .row{flex-direction:column;gap:4px}
+    .terms .t{flex:none}
+    .figures{flex-direction:column}
+    .figures div{padding:18px 12px}
+    .figures div:not(:last-child){border-right:none;border-bottom:1px solid var(--line)}
+  }
+</style>
+</head>
+<body>
+<article class="doc">
+
+  <h1>从一句话到一张卡片</h1>
+  <p class="sub">苹果 iOS 27 新 Siri 的生成式 UI 是怎么工作的 · 基于 AgentCanvasUICore 框架</p>
+
+  <div class="note-box">
+    <span class="nb-h">开始之前，先说清「生成式 UI」</span>
+    <p>先说<strong>生成式 UI</strong>是啥：你问一句，AI 不只回你一段文字，而是<strong>当场把答案拼成一张界面</strong>——该上卡片上卡片、该配图配图。它分两半：一半是<strong>大模型决定「说什么、用哪些块」</strong>，另一半是<strong>系统把这些块画成好看的界面</strong>。</p>
+    <p>本文讲的 <strong>AgentCanvasUICore</strong>，就是后面那一半——iOS 27 新 Siri 用来<strong>把答案画成卡片</strong>的那套系统机制。下文说的「块、识别、渲染、降级、动画」，全是它的活儿。所以标题说「生成式 UI 怎么工作」，讲的主要就是<strong>界面是怎么长出来的</strong>这半边。</p>
+  </div>
+
+  <p class="ask">想象你问 Siri：「珠峰有多高？帮我配几张图。」</p>
+
+  <p>大模型那一端，吐出来的并不是你最终看到的卡片，而是一串带标记的纯文本。它大概长这样：</p>
+
+  <pre><span class="c"># 珠穆朗玛峰</span>
+
+世界最高峰，海拔 &lt;callout value=8849 unit="meter"&gt;8,849 米&lt;/callout&gt;。
+
+&lt;imageCollection style="montage"&gt;
+  &lt;image url="..." width=2240 height=1260/&gt;
+&lt;/imageCollection&gt;</pre>
+
+  <p>模型的活到此为止。<strong>你看上面这段——它吐出来的就是这些：一个 <code>#</code> 标题、一段文字、一个 <code>&lt;callout&gt;</code> 数值、一组 <code>&lt;image&gt;</code>。</strong>它只决定<strong>「说什么、用哪种标记」</strong>；至于这些标记最后渲成多大字号、什么间距、怎么浮现上屏——代码里<strong>一个像素都没提</strong>，那是后台的事。这就是它和「直接画 UI」最根本的区别：<strong>模型产出的是「内容 ＋ 类型标记」，不是外观。</strong></p>
+
+  <p>还有一点同样关键：<strong>它能用的标记就那么固定的一套</strong>（<code>#</code>、<code>&lt;callout&gt;</code>、<code>&lt;image&gt;</code>……约二十种），<strong>多一种都没有</strong>。它没法临时发明一个 <code>&lt;weather&gt;</code> 或 <code>&lt;chart&gt;</code> 让系统去画——想表达这些，只能用现有这二十来种里的几样拼出来。正因为产出被收窄到「有限的内容 ＋ 有限的标记」，后台才能把它<strong>稳定地</strong>变成屏幕上那张优雅卡片——而这，正是接下来几幕的事。</p>
+
+  <hr>
+
+  <p class="act-label">第一幕</p>
+  <h2>认出它是什么</h2>
+
+  <p>同样一段文字进来，系统要做的第一件事，是把它拆成一个个<strong>「块」</strong>（block）。<strong>所谓「块」，就是一段能独立成形的内容单元</strong>——一个标题是一块、一段正文是一块、一张表格是一块、一组图也是一块。整张卡片，就是这些块自上而下码起来的。把长文本切成块，是后面一切的起点。</p>
+
+  <p>而在切块之前，还有个聪明的设计：苹果让内容支持<strong>两种写法</strong>，代码里叫 <code>Markdown.Flavor</code>（直译是「风味/变体」）。</p>
+
+  <div class="terms">
+    <div class="row">
+      <div class="t">swiftMarkdown</div>
+      <div class="d">标准 markdown。标题、列表、表格、代码、引用、<strong>数学公式</strong>——凡是通用 markdown 能写的，都走这条。</div>
+    </div>
+    <div class="row">
+      <div class="t">pseudoMarkdown</div>
+      <div class="d">苹果自定义的标签写法。图集、callout、折叠面板、自定义卡——markdown 表达不了的富媒体，才用 <code>&lt;tag&gt;</code> 包裹。</div>
+    </div>
+  </div>
+
+  <p>要先澄清一个误解：系统<strong>并不会去「猜」</strong>一段文本该用哪种写法。框架里找不到任何检测、推断的代码——<code>Markdown</code> 的构造器里，<code>flavor</code> 是一个<strong>直接传进来的参数</strong>。也就是说，用哪种写法是<strong>调用方（喂内容进来的那一端）说了算</strong>，在创建内容的那一刻就定死了，不是系统拿到文本现去判断的。</p>
+
+  <p>这里要拦一个顺理成章的疑问：<strong>「既然不猜，那它怎么知道 <code>#</code> 是标题、<code>&lt;image&gt;</code> 是图片？」</strong>——注意，「不猜」和「认得出」是<strong>两件事</strong>。上面说的「不猜」，只针对<strong>选哪种写法</strong>这一步（那是传参定的）。至于 <code>#</code>、<code>&lt;image&gt;</code> 这些<strong>具体标记</strong>，系统当然要认——但认它们靠的是<strong>规则，不是猜</strong>。差别在于：「猜」是拿一段<strong>没有标记</strong>的文本去推断它像什么；而这里，<strong>模型早就把标记明明白白写上了</strong>——<code>#</code> 是它打的、<code>&lt;image&gt;</code> 是它包的。系统要做的，只是<strong>照着这些明文标记去对规则</strong>，就像程序认 <code>if</code> 关键字一样确定，没有歧义、不会蒙错。</p>
+
+  <p>所以真正的问题不是「猜不猜」，而是：<strong>这些明文标记，系统具体怎么对规则认出来？</strong>一段文本里，怎么知道这一截是标题、那一截是表格、这里是公式、那里是图片？<strong>两类标记，用的是两套完全不同的识别机制。</strong></p>
+
+  <h3 style="font-size:19px;font-weight:700;margin:32px 0 18px">标准那条路：交给现成的解析器</h3>
+
+  <p>swiftMarkdown 这条路，<code>AgentCanvasUICore</code> <strong>自己根本不做识别</strong>。它把文本转手交给一个独立框架——<code>CampoMarkdown.framework</code>（Campo 是 iOS 27 Siri 的内部代号）。这是个成熟的标准 markdown 解析器，它天然就认识 markdown 的所有通用约定：</p>
+
+  <ul>
+    <li><code>#</code> 开头 → 这是标题</li>
+    <li><code>|…|…|</code> 加分隔行 → 这是表格</li>
+    <li>三个反引号 → 这是代码块</li>
+    <li><code>$…$</code> 或 <code>$$…$$</code> → 这是数学公式</li>
+  </ul>
+
+  <p>识别完，每一截文本就被贴上了类型标签。<strong>这一层的识别，<code>AgentCanvasUICore</code> 没有自己重写，而是直接复用了这个成熟的解析器。</strong></p>
+
+  <p>举两个例子。<strong>表格</strong>：模型吐出 <code>| 列1 | 列2 |</code> 再跟一行 <code>|---|---|</code>，<code>CampoMarkdown</code> 按 markdown 的通用规则一看就懂——这是表格，于是切出一段「表格」。<strong>标题、公式、代码块同理</strong>，都是这个解析器按既有规则认出来的，<code>AgentCanvasUICore</code> 全程没参与。</p>
+
+  <h3 style="font-size:19px;font-weight:700;margin:32px 0 18px">自定义那条路：扫标签、查名字</h3>
+
+  <p>但<strong>图片</strong>就不一样了。markdown 虽然有图片语法，可苹果要的是带宽高、能拼图集、能进沉浸态的富图片，标准 markdown 表达不了——于是它发明了自己的标签 <code>&lt;image url="..." width=2240/&gt;</code>。这类标签（<code>&lt;image&gt;</code>、<code>&lt;callout&gt;</code>、<code>&lt;accordion&gt;</code> 等）就得苹果自己识别了。核心是一个叫 <code>MarkdownStreamer</code> 的引擎，识别逻辑很朴素：</p>
+
+  <ol class="steps">
+    <li><strong>流式扫描。</strong>模型边吐字，它边 <code>consume</code>，一边读一边找尖括号 <code>&lt; &gt;</code>。</li>
+    <li><strong>等标签闭合。</strong><code>commitIfXMLBalanced</code>——确认像 <code>&lt;callout&gt;…&lt;/callout&gt;</code> 这样首尾配对、XML 平衡了，才提交，避免把吐到一半的半截标签当真。</li>
+    <li><strong>拿名字查表。</strong>扫到 <code>callout</code> 这个名字，就用它去 <code>TagName(rawValue:&nbsp;"callout")</code> 查那张约二十个标签的封闭清单。</li>
+  </ol>
+
+  <p>说白了就是<strong>拿名字去对清单</strong>：扫到 <code>callout</code>，就拿这个名字去那张写死的标签清单上比对，看在不在册。<strong>在</strong>，就按它对应的渲染方式走；<strong>不在</strong>，就当成一个「不认识的标签」，先记下来，留给第五幕的兜底机制处理。这张清单<strong>统共就约二十项</strong>，模型写不出清单之外的第 N+1 种——硬写，也会在这一步被认成「未知」。</p>
+
+  <p>到这里，原本一长串文字，就被<strong>切成了一段段、贴好了标签</strong>：这段是标题、这段是图片、这段是 callout……像一份理好的清单，一条一条，每条都标明了「这是什么、它带了哪些参数」。</p>
+
+  <p>识别，到此结束。系统已经<strong>知道每一段是什么</strong>了。接下来的问题只剩一个——<strong>怎么把它们画出来。</strong></p>
+
+  <hr>
+
+  <p class="act-label">第二幕</p>
+  <h2>交给对的人去画</h2>
+
+  <p>拿到这份贴好标签的清单，系统就一段段过：<strong>看它是什么类型，就派给专门画这种内容的那个「画师」</strong>。负责分派的角色叫<strong>路由器</strong>——它不画，只管把每段送到对的画师手上；而每一种内容，都有一个<strong>只画它这一种</strong>的画师，官方名字叫<strong>渲染器</strong>。标题有标题的渲染器，表格有表格的，图片有图片的。</p>
+
+  <p>关键是：<strong>这些渲染器长什么样，是设计师早就定死的</strong>——字多大、行距多宽、圆角多圆、标题用什么字阶，全都提前写好、固定不变。<strong>模型决定不了任何一个像素</strong>：它只能说「这是个标题」，至于这个标题最后被画成什么样，完全由渲染器说了算。模型能伸手的，<strong>顶多是「主题色」「相对大小」这么几个事先留好的旋钮</strong>（下一幕再说）。这些渲染器的名字都以 <code>richText</code> 开头：</p>
+
+  <ul>
+    <li><strong>文本类</strong>　richTextHeader · richTextParagraph · richTextTextBlock · richTextList · richTextBlockQuote · richTextPullQuote · richTextDivider</li>
+    <li><strong>结构类</strong>　richTextTable · richTextTableHeader · richTextTableCell · richTextCode · richTextAccordion · richTextTaggedBlock</li>
+    <li><strong>媒体类</strong>　richTextImage · richTextCallout（Collection）</li>
+    <li><strong>其它</strong>　richTextSourceAttribution（出处）· richTextCustomView（自定义卡）· richTextPlaceholder（占位）</li>
+  </ul>
+
+  <p>注意一个细节：表格、代码、标题这些<strong>有渲染器，却没有自己的标签</strong>。因为它们的「识别」发生在第一幕的标准 markdown 层，到这里只管「怎么画」。整套系统的权力划分，可以用三个数字概括：</p>
+
+  <div class="figures">
+    <div><div class="n">~18</div><div class="l">块标签<br>模型能选的</div></div>
+    <div><div class="n">~19</div><div class="l">渲染器<br>设计师写死的</div></div>
+    <div><div class="n">~35</div><div class="l">属性旋钮<br>开放给模型调的</div></div>
+  </div>
+
+  <p>不过「写死」要小心理解——<strong>定死的是「规则和档位」，不是「具体像素」。</strong>翻代码会发现，渲染器里几乎找不到绝对像素值：字号是 <code>CanvasTextSize.relative</code>（<strong>相对值</strong>，用户只能 increase / decrease / reset 调档，调不出任意大小）；高度是 <code>displayRelativeHeight</code>（<strong>相对高度</strong>）＋ 内容驱动，再配一套裁切状态机（<code>ClipState</code>：完整可见 / 尾部截断 / 完全截断）判断要不要收起；容器还分 <code>compact</code> / <code>regular</code> 两个响应式断点。</p>
+
+  <p>所以同一张卡，在大屏小屏、长内容短内容下会<strong>自适应地伸缩</strong>，但永远落在设计师圈定的范围内。这比「把每个像素填死」更高级：<strong>设计师定的不是一张张静态稿，而是一套会自己算尺寸的规则。</strong>模型那点开放权限（主题色、相对档位）也都卡在这套规则内——动得了观感，动不了骨架。</p>
+
+  <p>至于「业务要塞自己的原生卡片」怎么办——天气、股票、地图，这些规范里没有的东西？答案藏在后面的兜底机制里，<code>&lt;view&gt;</code> 自定义卡其实是那条降级链上的一环。先按下不表。</p>
+
+  <hr>
+
+  <p class="act-label">第三幕</p>
+  <h2>这套规范长什么样</h2>
+
+  <p>渲染器把块画出来，画成什么样不是临场发挥的——苹果有一套<strong>设计规范（Design Specs）</strong>，规定了每一种内容的标准呈现。下面这几张，是照着苹果各块的设计规范复刻的呈现。留意字号层级、衬线的用法、灰阶的取舍，这些都是设计师在规范里定死的：</p>
+
+  <!-- 标题层级 -->
+  <div class="gallery full">
+    <div class="render">
+      <div class="inner">
+        <div class="r-qwrap"><span class="r-q">Show me all the heading levels</span></div>
+        <div class="r-h1">Heading Level 1</div>
+        <div class="r-h2">Heading Level 2</div>
+        <div class="r-h3">HEADING LEVEL 3</div>
+        <div class="r-h456">HEADING LEVEL 4</div>
+        <div class="r-h456">HEADING LEVEL 5</div>
+        <div class="r-h456">HEADING LEVEL 6</div>
+        <div class="r-body">Body</div>
+        <div style="height:10px"></div>
+        <div class="r-title">Title Level 1</div>
+        <div class="r-sub">Subtitle Level 1</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="gallery">
+    <!-- callout -->
+    <div class="render">
+      <div class="inner">
+        <div class="r-qwrap"><span class="r-q">How tall is Mount Everest?</span></div>
+        <div class="r-dim" style="margin-bottom:10px">Mount Everest stands at</div>
+        <div class="r-num">8,849<span class="u">m</span></div>
+        <hr class="r-divline">
+        <div class="r-num">29,032<span class="u">ft</span></div>
+      </div>
+    </div>
+
+    <!-- list -->
+    <div class="render">
+      <div class="inner">
+        <div class="r-qwrap"><span class="r-q">List the three key blocks</span></div>
+        <ul class="r-list">
+          <li><span class="rn">1</span><span><b>First item</b> <span class="rd">description of the block</span></span></li>
+          <li><span class="rn">2</span><span><b>Second item</b> <span class="rd">description of the block</span></span></li>
+          <li><span class="rn">3</span><span><b>Third item</b> <span class="rd">description of the block</span></span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- math -->
+  <div class="gallery full">
+    <div class="render">
+      <div class="inner">
+        <div class="r-qwrap"><span class="r-q">Solutions to a quadratic equation?</span></div>
+        <div class="r-body">The two solutions to <span class="r-mi">ax² + bx + c = 0</span> are</div>
+        <div class="r-mb">
+          <span class="r-mi">x =</span>
+          <span class="r-frac"><span class="t">−b ± √(b² − 4ac)</span><span class="b">2a</span></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- code -->
+  <div class="gallery full">
+    <div class="render">
+      <div class="inner">
+        <div class="r-qwrap"><span class="r-q">Write a Fahrenheit→Celsius function in Swift</span></div>
+        <div class="r-body" style="margin-bottom:14px">A sample response that contains a Swift code block:</div>
+        <div class="r-code">
+          <div class="rc-bar">
+            <span>Swift</span>
+            <button class="rc-copy" type="button" onclick="copyCode(this)"><span class="rc-label">Copy</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2.5"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
+            </button>
+          </div>
+<pre><span class="kw">func</span> <span class="fn">fahrenheitToCelsius</span>(_ fahrenheit: <span class="fn">Double</span>) -&gt; <span class="fn">Double</span> {
+    <span class="kw">return</span> (fahrenheit - <span class="num">32</span>) * <span class="num">5</span> / <span class="num">9</span>
+}
+<span class="cm">// Example usage:</span>
+<span class="cm">// let celsius = fahrenheitToCelsius(98.6)</span>
+<span class="cm">// print(celsius) // Outputs: 37.0</span></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- table -->
+  <div class="gallery full">
+    <div class="render">
+      <div class="inner">
+        <div class="r-qwrap"><span class="r-q">Nutrition facts for this meal?</span></div>
+        <div class="r-tt">Nutrition Estimate</div>
+        <div class="r-ts">Burrito Bowl</div>
+        <table class="r-tbl">
+          <thead><tr><th>Proteins</th><th>Calories</th><th>Protein (g)</th><th>Total fat</th></tr></thead>
+          <tbody>
+            <tr><td>Chicken</td><td>185</td><td>35</td><td>4</td></tr>
+            <tr><td>Beef</td><td>250</td><td>30</td><td>15</td></tr>
+            <tr><td>Pork</td><td>220</td><td>28</td><td>12</td></tr>
+            <tr><td>Tofu</td><td>180</td><td>20</td><td>11</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- 文+图 -->
+  <div class="gallery full">
+    <div class="render">
+      <div class="inner">
+        <div class="r-qwrap"><span class="r-q">What's Kiwano like?</span></div>
+        <div class="r-dim" style="margin-bottom:8px">The Kiwano is a visually striking fruit with a subtle, refreshing taste resembling a mix of cucumber, kiwi, and lime.</div>
+        <img class="r-img" alt="kiwano fruit"
+             src="https://images.unsplash.com/photo-1610832958506-aa56368176cf?w=600&q=80&auto=format&fit=crop"
+             onerror="this.src='https://images.unsplash.com/photo-1564093497595-593b96d80180?w=600&q=80&auto=format&fit=crop'">
+        <div class="r-imgcap">Cucumis metuliferus<br><span class="s">African horned cucumber</span></div>
+        <div style="height:12px"></div>
+        <div class="r-h1" style="font-size:22px">Flavor Profile</div>
+        <div class="r-dim">Not overly sweet, but rather tangy and refreshing — a "fruit cocktail" of banana, lemon, and limey cucumber.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- callout 巨型号码 + 图片（license） -->
+  <div class="gallery full">
+    <div class="render">
+      <div class="inner">
+        <div class="r-qwrap"><span class="r-q">What's my license number?</span></div>
+        <div class="r-body">Your California Drivers Licence number is:</div>
+        <div class="r-bignum">D12345678</div>
+        <div class="r-license">
+          <div class="lc-hd"><span class="lc-ch">CH</span>FÜHRERAUSWEIS · PERMIS DE CONDUIRE<br>DRIVING LICENCE</div>
+          <div class="lc-body">
+            <div class="lc-photo">
+              <svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/>
+              </svg>
+            </div>
+            <div class="lc-fields">
+              <div><span class="n">1.</span><b>Sample</b></div>
+              <div><span class="n">2.</span><b>Angela</b></div>
+              <div><span class="n">3.</span><span>20.03.1968 · Bern/BE</span></div>
+              <div><span class="n">4a.</span><span>15.04.2023</span><span class="n sub">4c.</span><span>BE-CH</span></div>
+              <div><span class="n">5.</span><span>123456789004</span></div>
+            </div>
+          </div>
+          <div class="lc-foot">9. A B C D1 BE CE D1E F</div>
+        </div>
+        <div class="r-imgcap" style="margin-top:8px">Driver's Licence<span class="s">Regular image</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- imageCollection · 横向 montage + 表格 -->
+  <div class="gallery full">
+    <div class="render">
+      <div class="inner">
+        <div class="r-qwrap"><span class="r-q">Show me warm vs cool lighting</span></div>
+        <div class="r-dim" style="margin-bottom:14px">Color temperature can be hard to visualize. Let's look at it a few different ways.</div>
+        <div class="r-coll">
+          <figure>
+            <img alt="warm interior" src="https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?w=600&q=80&auto=format&fit=crop">
+            <figcaption>Warm<span class="s">Interior</span></figcaption>
+          </figure>
+          <figure>
+            <img alt="warm-neutral interior" src="https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=600&q=80&auto=format&fit=crop">
+            <figcaption>Warm-Neutral<span class="s">Interior</span></figcaption>
+          </figure>
+          <figure>
+            <img alt="cool interior" src="https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=600&q=80&auto=format&fit=crop">
+            <figcaption>Cool<span class="s">Interior</span></figcaption>
+          </figure>
+        </div>
+        <div class="r-dim" style="margin-bottom:14px">These images illustrate the difference between very warm (2700K), warm (3000K), and cool (5000K) color temperatures.</div>
+        <div class="r-dim" style="margin-bottom:20px">Warmer tones are often chosen for cozy, relaxing spaces like bedrooms, while cooler tones work well in more functional areas such as kitchens, offices, or living spaces.</div>
+        <div class="r-h3" style="margin-bottom:14px">QUICK OVERVIEW</div>
+        <table class="r-tbl">
+          <thead><tr><th>Temp (Kelvin)</th><th>Appearance / Tone</th></tr></thead>
+          <tbody>
+            <tr><td>~2700K</td><td>Warm white — cozy, intimate, golden/amber glow similar to incandescent bulbs</td></tr>
+            <tr><td>~3000K</td><td>Soft white — comfortable, relaxed, slightly warm with reduced yellow tint</td></tr>
+            <tr><td>~5000K</td><td>Neutral white — natural daylight feel, crisp and clean</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- pullQuote 全貌（前文 → 衬线引文 → 署名 → 后文） -->
+  <div class="gallery full">
+    <div class="render">
+      <div class="inner">
+        <div class="r-qwrap"><span class="r-q">A famous mountaineering quote?</span></div>
+        <div class="r-body" style="margin-bottom:8px">Sir Edmund Hillary was a beekeeper turned mountaineer, known for his physical strength and determination.</div>
+        <div class="r-pull">"It is not the mountain we conquer, but ourselves."</div>
+        <div class="r-pull-by" style="margin-bottom:18px">— Sir Edmund Hillary</div>
+        <div class="r-body">Tenzing Norgay was a Sherpa from Nepal with years of high-altitude climbing experience.</div>
+      </div>
+    </div>
+  </div>
+
+  <hr>
+
+  <p class="act-label">第四幕</p>
+  <h2>让它优雅地出现</h2>
+
+  <p>块画好了，但不能「啪」一下全蹦出来。怎么逐字浮现、怎么排队进场——这是动画规范，也是最讲究、最容易让人犯迷糊的一层。</p>
+
+  <p>先解开一个常见的结：动画其实是<strong>两件不同的事</strong>，很多人会缠在一起——</p>
+
+  <div class="terms">
+    <div class="row"><div class="t">A · 特效</div><div class="d">单个元素<strong>自己</strong>怎么动。文字逐字浮现、图片揭示、卡片整块弹入——<strong>每种块都不一样</strong>。</div></div>
+    <div class="row"><div class="t">B · 组合</div><div class="d">多个元素<strong>之间</strong>怎么排在一起。靠 <code>cascadeThreshold</code> 错峰，一块接一块。</div></div>
+  </div>
+
+  <p>记住这个分法，下面就清楚了。先看 <strong>A · 每种块各自的特效</strong>——注意它们<strong>真的不一样</strong>，不只是文字。</p>
+
+  <h3 style="font-size:19px;font-weight:700;margin:36px 0 14px">文字 · 逐字浮现</h3>
+  <p>段落文字按逐字 / 逐词浮现（<code>StreamingTextEffectStyle</code>，三档）。关键细节：每个字带一点<strong>模糊</strong>（<code>blurFade</code>），spectral 还有<strong>色差折射</strong>——这是它"柔"的来源，不是生硬淡入。</p>
+  <p style="font-size:14px;color:var(--ink-dim)">下面这块就是苹果 demo 里的 <strong style="color:var(--ink)">Text Effect Library</strong>——专门调文字特效的工作台：切换三档、改参数、看效果。</p>
+
+  <div class="anim-demo" id="ad-text">
+    <div class="ad-tabs">
+      <span class="ad-tab on" data-mode="standard">standard</span>
+      <span class="ad-tab" data-mode="spectral">spectral</span>
+      <span class="ad-tab" data-mode="spectralWord">spectralWord</span>
+      <button class="ad-replay" data-play="text"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg></button>
+    </div>
+    <div class="ad-tabs">
+      <span class="ad-tab on" data-len="short">短文本</span>
+      <span class="ad-tab" data-len="long">长文本</span>
+    </div>
+    <div class="render"><div class="inner">
+      <div class="r-qwrap"><span class="r-q" id="ad-text-q">What's the Hayflick limit?</span></div>
+      <div class="ad-out" id="ad-text-out"></div>
+    </div></div>
+    <div class="ad-params">
+      <div class="ad-prow"><label>Stiffness (k)</label><input type="range" id="ap-k" min="80" max="500" value="247"><span class="pv" id="apv-k">247</span></div>
+      <div class="ad-prow"><label>Damping (b)</label><input type="range" id="ap-b" min="6" max="50" value="20"><span class="pv" id="apv-b">20</span></div>
+      <div class="ad-prow"><label>Stagger（错峰）</label><input type="range" id="ap-stg" min="0" max="40" value="16"><span class="pv" id="apv-stg">16ms</span></div>
+      <div class="ad-prow"><label>Y Offset（位移）</label><input type="range" id="ap-yoff" min="0" max="16" value="6"><span class="pv" id="apv-yoff">6px</span></div>
+      <div class="ad-prow"><label>Blur（模糊）</label><input type="range" id="ap-blur" min="0" max="10" value="4"><span class="pv" id="apv-blur">4px</span></div>
+      <div class="ad-prow"><label>Aberration（色差）</label><input type="range" id="ap-ab" min="0" max="14" value="6"><span class="pv" id="apv-ab">6px</span></div>
+    </div>
+  </div>
+
+  <h3 style="font-size:19px;font-weight:700;margin:40px 0 14px">↳ 苹果默认长这样</h3>
+  <p>上面是把参数拆开让你玩。那<strong>苹果默认</strong>到底用哪套？demo 的 Debug Controls 里就有完整真值——默认是 <strong>Word Spring（逐词）</strong>，而且有个隐藏巧思：<strong>逐行递减的亮度</strong>，第一行最亮、越往下越轻，让长段落不会太"闹"。下面用<strong>苹果原值 1:1 复刻</strong>：</p>
+
+  <div class="anim-demo" id="ad-apple">
+    <div class="ad-tabs">
+      <span class="ad-label" style="color:var(--ink)">Apple Default · Word Spring · 原值</span>
+      <button class="ad-replay" data-play="apple"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg></button>
+    </div>
+    <div class="ad-tabs">
+      <span class="ad-tab" data-applelen="short">短文本</span>
+      <span class="ad-tab on" data-applelen="long">长文本</span>
+    </div>
+    <div class="render"><div class="inner">
+      <div class="r-qwrap"><span class="r-q">Explain the Hayflick limit</span></div>
+      <div class="ad-out" id="ad-apple-out" style="font-size:18px"></div>
+    </div></div>
+    <div class="ad-params">
+      <div class="ad-pgroup">Spring Timing</div>
+      <div class="ad-prow"><label>Word Delay（词间隔）</label><input type="range" id="pp-wd" min="0" max="6" step="0.1" value="1.1"><span class="pv" id="ppv-wd">1.1ms</span></div>
+      <div class="ad-prow"><label>Line Delay（行间隔）</label><input type="range" id="pp-ld" min="0" max="30" value="5"><span class="pv" id="ppv-ld">5ms</span></div>
+      <div class="ad-prow"><label>Y Offset %</label><input type="range" id="pp-yo" min="0" max="0.6" step="0.01" value="0.35"><span class="pv" id="ppv-yo">0.35</span></div>
+      <div class="ad-pgroup">Offset Spring</div>
+      <div class="ad-prow"><label>Response</label><input type="range" id="pp-r" min="0.1" max="1.2" step="0.01" value="0.40"><span class="pv" id="ppv-r">0.40</span></div>
+      <div class="ad-prow"><label>Damping</label><input type="range" id="pp-d" min="0.3" max="1.0" step="0.01" value="0.65"><span class="pv" id="ppv-d">0.65</span></div>
+      <div class="ad-pgroup">Opacity / Effects</div>
+      <div class="ad-prow"><label>Reveal End（提前到位）</label><input type="range" id="pp-re" min="0.3" max="1.0" step="0.01" value="0.70"><span class="pv" id="ppv-re">0.70</span></div>
+      <div class="ad-prow"><label>Blur（模糊）</label><input type="range" id="pp-bl" min="0" max="10" value="4"><span class="pv" id="ppv-bl">4px</span></div>
+      <div class="ad-prow"><label>色差 Start</label><input type="range" id="pp-ab" min="0" max="1.5" step="0.01" value="0.85"><span class="pv" id="ppv-ab">0.85</span></div>
+      <div class="ad-pgroup">Line Intensity（逐行变轻）</div>
+      <div class="ad-prow"><label>Line 1</label><input type="range" id="pp-l0" min="0" max="1" step="0.05" value="1.0"><span class="pv" id="ppv-l0">1.00</span></div>
+      <div class="ad-prow"><label>Line 2</label><input type="range" id="pp-l1" min="0" max="1" step="0.05" value="0.8"><span class="pv" id="ppv-l1">0.80</span></div>
+      <div class="ad-prow"><label>Line 3</label><input type="range" id="pp-l2" min="0" max="1" step="0.05" value="0.6"><span class="pv" id="ppv-l2">0.60</span></div>
+      <div class="ad-prow"><label>Line 4</label><input type="range" id="pp-l3" min="0" max="1" step="0.05" value="0.45"><span class="pv" id="ppv-l3">0.45</span></div>
+      <div class="ad-prow"><label>Line 5+</label><input type="range" id="pp-l4" min="0" max="1" step="0.05" value="0.2"><span class="pv" id="ppv-l4">0.20</span></div>
+    </div>
+  </div>
+
+  <h3 style="font-size:19px;font-weight:700;margin:36px 0 14px">图片 · 从上往下揭示</h3>
+  <p>图片<strong>不是整张对焦</strong>，而是从上往下揭开——清晰部分一点点扩展，未揭开的还是<strong>磨砂雾</strong>，揭示边缘带噪声波动和色差（<code>imageRevealBlurPass</code>）。和文字的微模糊完全不是一个量级。</p>
+
+  <div class="anim-demo" id="ad-img">
+    <div class="ad-tabs">
+      <span class="ad-label">imageRevealBlurPass · 从上往下</span>
+      <button class="ad-replay" data-play="img"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg></button>
+    </div>
+    <div class="render"><div class="inner">
+      <div class="r-qwrap"><span class="r-q">Show me Palm Springs</span></div>
+      <div class="ad-reveal" id="ad-img-out">
+        <img class="frost" alt="" src="https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&q=80&auto=format&fit=crop">
+        <img class="clear" alt="" src="https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&q=80&auto=format&fit=crop"
+             style="-webkit-mask:url(#adRevealMask);mask:url(#adRevealMask)">
+        <svg width="0" height="0" style="position:absolute">
+          <defs>
+            <mask id="adRevealMask" maskUnits="objectBoundingBox" maskContentUnits="objectBoundingBox">
+              <filter id="adRevealBlur"><feGaussianBlur stdDeviation="0.04"/></filter>
+              <path id="adRevealPath" d="M0,0 L1,0 L1,0 L0,0 Z" fill="#fff" filter="url(#adRevealBlur)"/>
+            </mask>
+          </defs>
+        </svg>
+      </div>
+    </div></div>
+    <div class="ad-params">
+      <div style="font-family:var(--mono);font-size:11px;color:var(--ink-dim);margin-bottom:12px">苹果真值（Image Reveal Debug Controls）</div>
+      <div class="ad-prow"><label>Response</label><input type="range" id="ip-resp" min="0.4" max="2.5" step="0.01" value="1.29"><span class="pv" id="ipv-resp">1.29</span></div>
+      <div class="ad-prow"><label>Damping</label><input type="range" id="ip-damp" min="0.5" max="2.5" step="0.01" value="1.32"><span class="pv" id="ipv-damp">1.32</span></div>
+      <div class="ad-prow"><label>Noise Freq</label><input type="range" id="ip-nf" min="0" max="1" step="0.01" value="0.24"><span class="pv" id="ipv-nf">0.24</span></div>
+      <div class="ad-prow"><label>Noise Amp</label><input type="range" id="ip-na" min="0" max="0.6" step="0.01" value="0.21"><span class="pv" id="ipv-na">0.21</span></div>
+      <div class="ad-prow"><label>Asymmetry</label><input type="range" id="ip-as" min="0" max="0.6" step="0.01" value="0.19"><span class="pv" id="ipv-as">0.19</span></div>
+    </div>
+  </div>
+
+  <h3 style="font-size:19px;font-weight:700;margin:36px 0 14px">Elasticity · 重排时的弹性让位</h3>
+  <p>这是另一种动画，<strong>和"进场"不是一回事</strong>。前面讲的都是"块第一次出现"；Elasticity 管的是<strong>块已经在了、但因为邻居变高要挪位</strong>的情况——最典型的就是<strong>图片异步加载</strong>：文字先到位，图片还在加载，等图片加载完<strong>撑开高度</strong>，下面的内容就得往下让。</p>
+  <p>苹果不让它生硬地"啪"地跳下去，而是<strong>带弹性、留间距</strong>地挪。每个块对邻居有个附着关系（<code>ElasticAttachment: preceding / following / independent</code>），像有韧性的一串，而不是僵硬的列表。点 Play 看图片加载撑开时，下面的标题和文字怎么被弹性推下去：</p>
+
+  <div class="anim-demo" id="ad-el">
+    <div class="ad-tabs">
+      <span class="ad-label">图片加载 → 撑开 → 下面弹性让位</span>
+      <button class="ad-replay" data-play="el"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg></button>
+    </div>
+    <div class="render"><div class="inner">
+      <div class="r-qwrap"><span class="r-q">What's Taylor Swift's newest album?</span></div>
+      <div class="el-stack" id="ad-el-out"></div>
+    </div></div>
+    <div class="ad-params">
+      <div style="font-family:var(--mono);font-size:11px;color:var(--ink-dim);margin-bottom:12px">苹果真值（Elasticity Settings）</div>
+      <div class="ad-prow"><label>Bounciness（回弹）</label><input type="range" id="ep-bo" min="0" max="1" step="0.01" value="0.75"><span class="pv" id="epv-bo">0.75</span></div>
+      <div class="ad-prow"><label>Collision Margin</label><input type="range" id="ep-cm" min="0" max="8" step="0.5" value="2"><span class="pv" id="epv-cm">2.0pt</span></div>
+      <div class="ad-prow"><label>Damping Factor</label><input type="range" id="ep-df" min="0.1" max="1" step="0.01" value="0.50"><span class="pv" id="epv-df">0.50</span></div>
+    </div>
+  </div>
+
+  <h3 style="font-size:19px;font-weight:700;margin:36px 0 14px">卡片 · 整块弹入</h3>
+  <p>结构化卡片作为<strong>一个整体</strong>进场，只有位移 + 淡入，<strong>没有模糊、没有色差</strong>——数字糊成一团会很廉价。多张卡片时按 <code>cascadeThreshold</code> 一张接一张<strong>错峰</strong>往下码。</p>
+
+  <div class="anim-demo" id="ad-card">
+    <div class="ad-tabs">
+      <span class="ad-tab on" data-cardmode="single">单卡</span>
+      <span class="ad-tab" data-cardmode="multi">多卡级联</span>
+      <button class="ad-replay" data-play="card"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg></button>
+    </div>
+    <div class="render"><div class="inner">
+      <div class="r-qwrap"><span class="r-q">Weather in a few cities?</span></div>
+      <div id="ad-card-out"></div>
+    </div></div>
+    <div class="ad-params">
+      <div class="ad-prow"><label>Stiffness (k)</label><input type="range" id="cp-k" min="120" max="420" value="247"><span class="pv" id="cpv-k">247</span></div>
+      <div class="ad-prow"><label>Damping (b)</label><input type="range" id="cp-b" min="14" max="44" value="20"><span class="pv" id="cpv-b">20</span></div>
+      <div class="ad-prow"><label>Y Offset（位移）</label><input type="range" id="cp-yoff" min="10" max="48" value="28"><span class="pv" id="cpv-yoff">28px</span></div>
+      <div class="ad-prow"><label>Cascade 阈值（多卡）</label><input type="range" id="cp-th" min="10" max="95" value="45"><span class="pv" id="cpv-th">45%</span></div>
+    </div>
+  </div>
+
+  <p>A 讲完了——<strong>三种块，三种完全不同的进场</strong>。那 <strong>B · 组合</strong> 呢？这才是"图片+文字、卡片+文字到底怎么配"的答案。</p>
+
+  <blockquote>
+    <span class="q-label">没有「组合专属配方」</span>
+    <p>很多人以为"文字+图片"有一套配方、"文字+卡片"有另一套，要分别设计。<strong>但苹果根本没有任何组合专属配方</strong>——二进制里搜不到 <code>textImage</code> / <code>textCard</code> / <code>combo</code> 这类东西。</p>
+    <p>只有<strong>一条通用规则</strong>，所有组合都走它：<strong>每块用自己的特效进场，块之间用 <code>cascadeThreshold</code> 统一排队。</strong></p>
+  </blockquote>
+
+  <p>所以无论怎么组合——<strong>配法完全一样</strong>：块按顺序排好，第一块用自己的特效进场，进到阈值后下一块开始，往下"码"。下面这条回答就是文字 → 卡片 → 卡片，三块各用各的特效、之间用同一个 cascade 衔接：</p>
+
+  <div class="anim-demo" id="ad-casc">
+    <div class="ad-tabs">
+      <span class="ad-label">文字 → cascade → 天气卡 → cascade → 股票卡</span>
+      <button class="ad-replay" data-play="casc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg></button>
+    </div>
+    <div class="render"><div class="inner">
+      <div class="r-qwrap"><span class="r-q">早上好，今天怎么样？</span></div>
+      <div id="ad-casc-out"></div>
+    </div></div>
+    <div class="ad-params">
+      <div class="ad-pgroup">Cascade（块之间的衔接）</div>
+      <div class="ad-prow"><label>Cascade 阈值</label><input type="range" id="kp-th" min="10" max="95" value="45"><span class="pv" id="kpv-th">45%</span></div>
+      <div class="ad-pgroup">文字</div>
+      <div class="ad-prow"><label>字间隔（中文逐字）</label><input type="range" id="kp-stg" min="6" max="60" value="22"><span class="pv" id="kpv-stg">22ms</span></div>
+      <div class="ad-pgroup">卡片 Spring</div>
+      <div class="ad-prow"><label>Response</label><input type="range" id="kp-r" min="0.15" max="1.0" step="0.01" value="0.40"><span class="pv" id="kpv-r">0.40</span></div>
+      <div class="ad-prow"><label>Damping</label><input type="range" id="kp-d" min="0.4" max="1.0" step="0.01" value="0.80"><span class="pv" id="kpv-d">0.80</span></div>
+    </div>
+  </div>
+
+  <h3 style="font-size:19px;font-weight:700;margin:36px 0 14px">那第二个块，怎么知道该出场了？</h3>
+  <p>答案就藏在前面那个 <code>cascadeThreshold</code> 里。第一个块<strong>不是</strong>"完全出现完"才轮到第二个——那样会一顿一顿的。它的真正机制是：</p>
+
+  <div class="terms">
+    <div class="row"><div class="t">进度，不是完成</div><div class="d">系统盯着第一个块的<strong>进场进度</strong>（spring 走到百分之多少）。比如阈值设 <strong>45%</strong>——第一块进到 45%，<strong>第二块就开始</strong>，不等它走完。</div></div>
+    <div class="row"><div class="t">所以是叠着出</div><div class="d">第二块开始时，第一块还在动。两块有一段<strong>重叠</strong>，看起来就是流畅地"一个推一个"往下码，而不是僵硬地排队。</div></div>
+    <div class="row"><div class="t">阈值决定节奏</div><div class="d">阈值<strong>低</strong>（如 20%）→ 块几乎同时涌出，快而满；阈值<strong>高</strong>（如 90%）→ 一个走得差不多了下一个才来，慢而稳。</div></div>
+  </div>
+
+  <p>说白了：<strong>cascade 不是"出现完了通知下一个"，而是"我进度到点了，下一个自己就开始"</strong>。每个块只关心自己进到哪了，到了阈值就放行下一个——一条简单的规则，串起任意多个块。上面 demo 的「Cascade 阈值」滑块调的就是这个百分比，你能直接看到节奏变化。</p>
+
+  <p>底层所有这些进场，都由同一套<strong>三组 spring</strong> 驱动——位移、透明度、特效各一条曲线（<code>springOffset</code> / <code>springOpacity</code> / <code>springEffects</code>）。所谓 standard、弹性，不过是同一组 spring 调成不同的回弹量。</p>
+
+  <blockquote>
+    <span class="q-label">一句话收口</span>
+    <p><strong>A 特效</strong>（每块自己怎么动）和 <strong>B 组合</strong>（cascade 排队）是两件事。不用记 N 种配方，只用记<strong>一条规则 + 每种块的特效</strong>。</p>
+  </blockquote>
+
+  <hr>
+
+  <p class="act-label">第五幕</p>
+  <h2>它从不失败，只降级</h2>
+
+  <p>现在回到那个一直按着没讲的问题：模型要表达一个东西，可系统不一定有对应的块——天气卡、股票卡，甚至一个谁都没见过的标签。系统怎么办？</p>
+
+  <p>它<strong>从不报错、从不留白</strong>。面对任何内容，它沿着一条<strong>降级阶梯</strong>从上往下试，总有一级能接住。这就是整套规范的安全网，一共四级：</p>
+
+  <!-- 第①级 -->
+  <div class="layer">
+    <div class="layer-hd"><span class="lv">第 1 级</span><h4>有专门块 → 用专门块</h4></div>
+    <p>能对上 image、table、callout 的，对号入座，最佳呈现。这是最理想的一级。</p>
+    <div class="demo">
+      <div class="q">旧金山天气怎么样？</div>
+      <div class="stage">
+        <div class="weather">
+          <div class="city">San Francisco ✈</div>
+          <div class="temp">63°</div>
+          <div class="sun">☀️</div>
+          <div class="meta">Sunny<br>H:63° L:52°</div>
+        </div>
+      </div>
+      <div class="demo-note">渲染器里有「天气」这个专门卡片，于是渲染成精心设计的天气卡。</div>
+    </div>
+  </div>
+
+  <!-- 第②级 -->
+  <div class="layer">
+    <div class="layer-hd"><span class="lv">第 2 级</span><h4>没专门块 → 退回纯文字</h4></div>
+    <p>表达不了的，降级成 paragraph + coreResponse。样式没了，但内容一个字不丢。</p>
+    <div class="demo">
+      <div class="q">帮我分析下这份合同的法律风险</div>
+      <div class="stage">
+        <div class="answer">
+          这份合同主要有三处需要注意：<b>违约金条款</b>偏高、<b>付款周期</b>未约定上限、以及<b>管辖法院</b>对你不利。建议在签署前要求对方修改这三项。
+          <div class="note">（没有「法律分析」的专属卡片，于是用最通用的文字段落如实回答。）</div>
+        </div>
+      </div>
+      <div class="demo-note">不好看，但信息一点不丢——这是兜底的主力。</div>
+    </div>
+  </div>
+
+  <!-- 第③级 -->
+  <div class="layer">
+    <div class="layer-hd"><span class="lv">第 3 级</span><h4>需要原生卡 → 自定义视图</h4></div>
+    <p>业务想塞自己的卡片（天气 / 股票 / 地图 / 打车），用 <code>&lt;view id="..."/&gt;</code>。宿主 App 通过 <code>CustomViewsSource</code> 注册好视图，模型吐出对应 id，系统就把那张原生卡渲染进内容流里。<strong>第二幕按下没讲的「卡片」，就落在这一级</strong>——它不是旁支，是降级阶梯的一环。</p>
+    <div class="demo">
+      <div class="q">帮我打车去机场</div>
+      <div class="stage">
+        <div class="lead">已为你叫好车，正在前往机场：</div>
+        <div class="customview">
+          <div class="badge">第三方 App 自绘视图</div>
+          <div class="ride">
+            <div class="top">
+              <div class="price">¥48</div>
+              <div class="eta">3 分钟到达</div>
+            </div>
+            <div class="car">
+              <div class="ic">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/>
+                  <circle cx="7" cy="17" r="2"/>
+                  <path d="M9 17h6"/>
+                  <circle cx="17" cy="17" r="2"/>
+                </svg>
+              </div>
+              <div class="info"><div class="name">滴滴专车 · 沪A·8888</div><div class="sub">王师傅 · 4.9★</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="demo-note">系统不理解 <code>&lt;view&gt;</code> 里面的内容，只负责给它一块地方 + 圆角裁切。这是给第三方的「逃生舱口」。</div>
+    </div>
+  </div>
+
+  <!-- 第④级 -->
+  <div class="layer">
+    <div class="layer-hd"><span class="lv">第 4 级</span><h4>完全不认识 → 兜底处理器</h4></div>
+    <p>遇到压根没见过的标签，<code>UnrecognizedTagHandler</code> 接管：忽略那个标签，但保留里面的文字。绝不崩、绝不空。</p>
+    <div class="demo">
+      <div class="q">介绍下金门大桥</div>
+      <div class="stage">
+        <div class="raw">模型吐出：金门大桥的官方色叫 <span class="badtag">&lt;hologram fx="3d"&gt;</span>International Orange<span class="badtag">&lt;/hologram&gt;</span>。</div>
+        <div class="fall-arrow">系统不认识 <code>&lt;hologram&gt;</code> → 丢掉标签，保留文字 ↓</div>
+        <div class="final-ans">金门大桥的官方色叫 International Orange。</div>
+      </div>
+      <div class="demo-note">最笨的一层，但保证无论模型吐出什么，都不会崩、不会白屏。最后的安全网。</div>
+    </div>
+  </div>
+
+  <p>四级连起来看，会发现一个优雅的递降：<strong>专属呈现 → 纯文字 → 自定义卡 → 保底文字</strong>。越往下越朴素，但永远有底。</p>
+
+  <p>这背后是一句设计哲学：<strong>格子就那么几种，但后厨永远兜得住。</strong>复杂度不靠「做一张能表达一切的超级卡片」，而靠「用有限的几种格子，流式地拼出无穷的组合」来消化。模型能填的被锁死在安全范围内，体验的下限被牢牢托住——所以无论模型填出什么，最后总能<strong>从一句话，变成一张卡片。</strong></p>
+
+  <hr>
+
+  <p class="ask">大模型负责「说什么」，这套规范负责「怎么呈现」。</p>
+
+  <div class="footer">
+    数据来源 · AgentCanvasUICore.framework（iOS 27 / macOS 26）<br>
+    关键符号 · Markdown.Flavor · RichText.AnyTagName · RichTextElementViewProviderType<br>
+    　　　　　 RichTextStreamAnimationCoordinator · ElasticityCoordinator · UnrecognizedTagHandler<br>
+    仅供研究学习 · beta 版本数值与正式版可能有差异
+  </div>
+
+</article>
+
+<script>
+// ── 代码块 Copy ──
+function copyCode(btn){
+  const pre = btn.closest(".r-code").querySelector("pre");
+  const text = pre.innerText;
+  const label = btn.querySelector(".rc-label");
+  const done = ()=>{ label.textContent="Copied"; btn.classList.add("copied");
+    clearTimeout(btn._t); btn._t=setTimeout(()=>{label.textContent="Copy"; btn.classList.remove("copied");},1600); };
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(done).catch(()=>fallbackCopy(text,done));
+  } else { fallbackCopy(text,done); }
+}
+function fallbackCopy(text,done){
+  const ta=document.createElement("textarea");ta.value=text;ta.style.position="fixed";ta.style.opacity="0";
+  document.body.appendChild(ta);ta.select();try{document.execCommand("copy");done();}catch(e){}document.body.removeChild(ta);
+}
+
+// ── spring（agent-canvas-web 数值积分版）──
+const MS=4;
+class Spring{
+  constructor(v,cfg){this.value=v;this.target=v;this.velocity=0;this.cfg=cfg;this.leftover=0;}
+  setTarget(t){this.target=t;}
+  step(dt){const{stiffness:k,damping:b,mass:m,precision}=this.cfg;let acc=dt+this.leftover;
+    while(acc>=MS){const h=MS/1000;const a=(-k*(this.value-this.target)-b*this.velocity)/m;this.velocity+=a*h;this.value+=this.velocity*h;acc-=MS;}
+    this.leftover=acc;
+    if(Math.abs(this.velocity)<precision&&Math.abs(this.value-this.target)<precision){this.value=this.target;this.velocity=0;return false;}
+    return true;}
+}
+const CFG={stiffness:240,damping:24,mass:1,precision:0.01};
+function loop(fn){let last=performance.now();function f(now){const dt=Math.min(now-last,64);last=now;if(fn(dt,now))requestAnimationFrame(f);}requestAnimationFrame(f);}
+
+// ── 文字 ──
+const AD_SHORT={q:"What's the Hayflick limit?",a:"The Hayflick limit is the maximum number of times a normal cell can divide."};
+const AD_LONG={q:"Explain the Hayflick limit in detail",a:"The Hayflick limit is the maximum number of times a normal human cell can divide, typically around 40 to 60 times, before cell division stops. It happens because telomeres — the protective caps at the ends of chromosomes — get shorter with each division, eventually triggering senescence. Discovered by Leonard Hayflick in 1961, it overturned the belief that cells divide indefinitely."};
+let adTextMode="standard", adTextLen="short";
+// 默认 spring 用苹果真值：Response 0.40 / Damping 0.65 → k≈247 / b≈20
+const adP={k:247,b:20,stg:16,yoff:6,blur:4,ab:6};
+function adPlayText(){
+  const src = adTextLen==="long"?AD_LONG:AD_SHORT;
+  document.getElementById("ad-text-q").textContent=src.q;
+  const TXT=src.a;
+  const el=document.getElementById("ad-text-out");el.innerHTML="";
+  let units=adTextMode==="standard"?[TXT]:adTextMode==="spectralWord"?(TXT.match(/\S+|\s+/g)||[]):Array.from(TXT);
+  const stg=adTextMode==="standard"?0:adP.stg, ab=adTextMode==="standard"?0:adP.ab, blur=adP.blur, yoff=Math.max(adP.yoff,0.5);
+  const tcfg={stiffness:adP.k,damping:adP.b,mass:1,precision:0.01};   // 同 streaming-text-demo
+  let idx=0;
+  const items=[];
+  if(adTextMode==="standard"){
+    // 整段一个块，整体进场（不拆字，正常换行）
+    const s=document.createElement("span");s.className="u";s.style.display="block";s.textContent=TXT;
+    s.style.opacity="0";s.style.filter=blur>0?`blur(${blur}px)`:"none";el.appendChild(s);
+    items.push({s,i:0,sp:new Spring(adP.yoff,tcfg),st:false,t0:0});
+  }else{
+    units.forEach((u)=>{
+      // 纯空格 token → 普通 inline span(允许换行)，不参与动画
+      if(/^\s+$/.test(u)){const sp=document.createElement("span");sp.className="sp";sp.textContent=u;el.appendChild(sp);return;}
+      const s=document.createElement("span");s.className="u";s.textContent=u;
+      s.style.opacity="0";s.style.filter=blur>0?`blur(${blur}px)`:"none";el.appendChild(s);
+      items.push({s,i:idx++,sp:new Spring(adP.yoff,tcfg),st:false,t0:0});
+    });
+  }
+  const t0=performance.now()+220;
+  loop((dt,now)=>{let alive=false;for(const it of items){const at=t0+it.i*stg;if(now<at){alive=true;continue;}
+    if(!it.st){it.st=true;it.sp.setTarget(0);it.t0=now;}const a=it.sp.step(dt);const y=it.sp.value;
+    it.s.style.transform=`translateY(${y.toFixed(2)}px)`;
+    const prog=1-Math.min(1,Math.abs(y)/yoff);
+    it.s.style.opacity=Math.min(1,prog/0.6).toFixed(3);
+    const b=blur*(1-prog);it.s.style.filter=b>0.05?`blur(${b.toFixed(2)}px)`:"none";
+    if(ab>0){const av=ab*(1-prog);it.s.style.textShadow=av>0.1?`${(-av).toFixed(2)}px 0 rgba(255,40,40,.7),${av.toFixed(2)}px 0 rgba(0,200,255,.7)`:"none";}
+    if(a)alive=true;else{it.s.style.transform="none";it.s.style.opacity="1";it.s.style.filter="none";it.s.style.textShadow="none";}}
+    return alive;});
+}
+
+// ── 图片揭示（对齐苹果 Image Reveal）──
+// 未揭区=白磨砂；SVG mask 波浪 path 从上往下揭开，边缘经 feGaussianBlur → 模糊柔和
+const adImg={resp:1.29,damp:1.32,noiseFreq:0.24,noiseAmp:0.21,asym:0.19,spread0:0.19,spread1:0.63};
+function adPlayImg(){
+  const pathEl=document.getElementById("adRevealPath");
+  const blurEl=document.querySelector("#adRevealBlur feGaussianBlur");
+  if(!pathEl)return;
+  const k=Math.pow(2*Math.PI/adImg.resp,2), b=2*adImg.damp*Math.sqrt(k);
+  const sp=new Spring(0,{stiffness:k,damping:b,mass:1,precision:0.0005});
+  const t0=performance.now();
+  const N=20;
+  // 边缘模糊强度（objectBoundingBox 坐标，0.03~0.06 柔）
+  blurEl.setAttribute("stdDeviation", (0.035+adImg.spread1*0.03).toFixed(3));
+  function pathFor(cov,now){
+    const amp = 0.16*(adImg.noiseAmp/0.21);   // 波浪振幅(归一化)
+    const base = cov*(1+amp*2) - amp;          // 基准揭示线 y(0..1)
+    const t=(now-t0)/600;
+    // 上半部分(已揭示)填白：path 从顶到波浪线
+    let d="M0,-0.1 L1,-0.1 ";   // 顶边(超出一点)
+    for(let i=N;i>=0;i--){
+      const x=i/N;
+      const hump=(1-Math.pow(2*x-1,2));        // 中间凸
+      const wobble=Math.sin(x*6.28*adImg.noiseFreq*5+t*2)*0.5+Math.sin(x*15-t*1.3)*0.3;
+      const asymShift=(x-0.5)*adImg.asym*amp;
+      let y=base+hump*amp*1.1+wobble*amp*0.5+asymShift;
+      y=Math.max(-0.2,Math.min(1.2,y));
+      d+=`L${x.toFixed(4)},${y.toFixed(4)} `;
+    }
+    d+="Z";
+    return d;
+  }
+  pathEl.setAttribute("d",pathFor(0,t0));
+  loop((dt,now)=>{const a=sp.step(dt);const cov=sp.value;
+    pathEl.setAttribute("d",pathFor(cov,now));
+    if(a)return true;pathEl.setAttribute("d","M0,-0.1 L1,-0.1 L1,1.2 L0,1.2 Z");return false;});
+  sp.setTarget(1);
+}
+
+// ── Elasticity：图片撑开 → 下面块弹性让位 ──
+// Bounciness→回弹(低 damping)，Damping Factor→阻尼，Collision Margin→块间留白
+const adEl={bounciness:0.75,collisionMargin:2,damping:0.50};
+function adPlayElastic(){
+  const out=document.getElementById("ad-el-out");
+  out.innerHTML=`
+    <div class="el-img" id="el-img" style="height:64px"><span class="ph" id="el-ph"></span><img id="el-realimg" style="display:none" alt="" src="https://images.unsplash.com/photo-1616594039964-ae9021a400a0?w=600&q=80&auto=format&fit=crop"></div>
+    <div class="el-blk" id="el-blk">
+      <div class="el-title">The Life of a Showgirl</div>
+      <div class="el-body">Taylor Swift's 12th studio album, released on October 3, 2025. It follows The Tortured Poets Department.</div>
+    </div>`;
+  const img=document.getElementById("el-img"), ph=document.getElementById("el-ph"), real=document.getElementById("el-realimg");
+  const blk=document.getElementById("el-blk");
+  const START=64, END=190;                    // 图片占位高 → 加载完高
+  // Bounciness 0..1 → dampingFraction：默认非常克制，最多一点点过冲
+  //   bounciness 0   → 1.0 (临界，完全不弹)
+  //   bounciness 0.75→ 0.85 (柔和滑下 + 极轻过冲)
+  //   bounciness 1   → 0.78
+  const dampFrac=Math.max(0.78, 1.0 - adEl.bounciness*0.22);
+  const resp=0.5;
+  const k=Math.pow(2*Math.PI/resp,2), b=2*dampFrac*Math.sqrt(k);
+  const sp=new Spring(START,{stiffness:k,damping:b,mass:1,precision:0.05});
+  // 1秒后"图片加载完"，触发撑开
+  let loaded=false;
+  setTimeout(()=>{
+    ph.style.display="none"; real.style.display="block";
+    loaded=true; sp.setTarget(END);
+  },900);
+  loop((dt,now)=>{
+    if(!loaded)return true;
+    const a=sp.step(dt);
+    const h=sp.value;
+    // 只改图片高度：下面的块靠文档流自然被推下去(spring 回弹体现在高度上)
+    // collision margin 体现在图片下方 margin
+    img.style.height=h.toFixed(1)+"px";
+    img.style.marginBottom=(10+adEl.collisionMargin).toFixed(1)+"px";
+    if(a)return true;
+    img.style.height=END+"px";
+    return false;
+  });
+}
+
+// ── 卡片 ──
+let adCardMode="single";
+// 用第五幕「专属天气卡」(.weather) 的设计：city + temp64 + sun右上 + meta右下
+const WX=[
+  ["San Francisco ✈","63°","☀️","Sunny","H:63° L:52°","160deg,#4a90e2,#7bb5f0"],
+  ["Tokyo","18°","🌙","Clear","H:21° L:15°","160deg,#3a6fc0,#5a8fd0"],
+  ["London","11°","🌧","Rain","H:13° L:8°","160deg,#2d5599,#4a7bc0"]
+];
+function adCardEl([city,temp,sun,cond,hl,grad]){
+  const d=document.createElement("div");d.className="weather ad-wx";
+  d.style.background=`linear-gradient(${grad})`;
+  d.innerHTML=`<div class="city">${city}</div><div class="temp">${temp}</div>`+
+    `<div class="sun">${sun}</div><div class="meta">${cond}<br>${hl}</div>`;
+  return d;
+}
+const adCard={k:247,b:20,yoff:28,th:45};   // spring 同苹果文字真值 R0.4/D0.65
+function adPlayCard(){
+  const out=document.getElementById("ad-card-out");out.innerHTML="";
+  const n=adCardMode==="single"?1:3;
+  const YO=adCard.yoff, TH=adCard.th/100;
+  const cards=WX.slice(0,n).map(w=>{const el=adCardEl(w);el.style.opacity="0";el.style.transform=`translateY(${YO}px)`;out.appendChild(el);
+    return{el,sp:new Spring(YO,{stiffness:adCard.k,damping:adCard.b,mass:1,precision:0.01}),st:false};});
+  let unl=0;
+  const t0=performance.now()+200;
+  loop((dt,now)=>{if(now<t0)return true;let alive=false;
+    for(let i=0;i<cards.length;i++){const o=cards[i];if(i>unl){alive=true;continue;}
+      if(!o.st){o.st=true;o.sp.setTarget(0);}const a=o.sp.step(dt);const y=o.sp.value;
+      o.el.style.transform=`translateY(${y.toFixed(2)}px)`;o.el.style.opacity=(1-Math.min(1,Math.abs(y)/YO)).toFixed(3);
+      if(i===unl){const p=(YO-Math.abs(y))/YO;if(p>=TH&&unl<cards.length-1)unl++;}
+      if(a)alive=true;else{o.el.style.transform="none";o.el.style.opacity="1";}}
+    return alive;});
+}
+
+// ── 苹果默认（Word Spring，原值 1:1）──
+// response 0.40 / damping 0.65 → 数值积分: k=(2π/0.4)^2≈247, b=2·0.65·√k≈20.4
+const APPLE={k:247,b:20.4,wordDelay:11,lineDelay:50,yoffPct:0.35,revealEnd:0.70,blur:4,abStart:0.85};
+const APPLE_LINE=[1.0,0.8,0.6,0.45,0.2];   // 逐行亮度递减
+let appleLen="long";
+const APPLE_TXT={
+  short:"The Hayflick limit caps how many times a normal cell can divide.",
+  long:"The Hayflick limit is the maximum number of times a normal human cell can divide, typically around 40 to 60 times, before cell division stops permanently. It happens because telomeres — the protective caps at the ends of chromosomes — get shorter with each division, eventually triggering senescence. Discovered by Leonard Hayflick in 1961, it overturned the long-held belief that cells could divide forever."
+};
+function adPlayApple(){
+  const el=document.getElementById("ad-apple-out");el.innerHTML="";
+  const TXT=APPLE_TXT[appleLen];
+  const words=TXT.split(/(\s+)/);   // 保留空格作为独立 token
+  const fontPx=18, yoff=fontPx*APPLE.yoffPct; // Y Offset% × 字号
+  const tcfg={stiffness:APPLE.k,damping:APPLE.b,mass:1,precision:0.01};
+  let wi=0;
+  const items=[];
+  words.forEach((w)=>{
+    if(/^\s+$/.test(w)){const sp=document.createElement("span");sp.className="sp";sp.textContent=w;el.appendChild(sp);return;}
+    if(w==="")return;
+    const s=document.createElement("span");s.className="u";s.textContent=w;
+    s.style.opacity="0";s.style.filter=`blur(${APPLE.blur}px)`;el.appendChild(s);
+    items.push({s,i:wi++,sp:new Spring(yoff,tcfg),st:false,t0:0});
+  });
+  // 量行：渲染后读每个 word 的 offsetTop → 归一成行号
+  requestAnimationFrame(()=>{
+    let lineTops=[]; items.forEach(it=>{const t=it.s.offsetTop;if(!lineTops.includes(t))lineTops.push(t);});
+    lineTops.sort((a,b)=>a-b);
+    items.forEach(it=>{it.line=lineTops.indexOf(it.s.offsetTop);});
+    const t0=performance.now()+220;
+    loop((dt,now)=>{let alive=false;
+      for(const it of items){
+        // 延迟 = 词序×wordDelay + 行号×lineDelay
+        const at=t0+it.i*APPLE.wordDelay+it.line*APPLE.lineDelay;
+        if(now<at){alive=true;continue;}
+        if(!it.st){it.st=true;it.sp.setTarget(0);it.t0=now;}
+        const a=it.sp.step(dt);const y=it.sp.value;
+        it.s.style.transform=`translateY(${y.toFixed(2)}px)`;
+        const prog=1-Math.min(1,Math.abs(y)/Math.max(yoff,0.5));
+        // 透明度提前到位 revealEnd 0.7 + 逐行亮度上限
+        const lineMax=APPLE_LINE[Math.min(it.line,APPLE_LINE.length-1)];
+        it.s.style.opacity=(Math.min(1,prog/APPLE.revealEnd)*lineMax).toFixed(3);
+        const b=APPLE.blur*(1-prog);it.s.style.filter=b>0.05?`blur(${b.toFixed(2)}px)`:"none";
+        const av=APPLE.abStart*8*(1-prog); // 色差 start 0.85 → 0
+        it.s.style.textShadow=av>0.1?`${(-av).toFixed(2)}px 0 rgba(255,40,40,.7),${av.toFixed(2)}px 0 rgba(0,200,255,.7)`:"none";
+        if(a)alive=true;else{it.s.style.transform="none";it.s.style.filter="none";it.s.style.textShadow="none";it.s.style.opacity=lineMax.toFixed(3);}
+      }
+      return alive;});
+  });
+}
+
+// ── 组合：文字→卡片→卡片（文字用苹果默认 Word Spring + 逐行亮度 + 色差 + blur）──
+const CASC={th:45,stg:22,k:247,b:20};   // 组合 demo 参数
+function adPlayCasc(){
+  const out=document.getElementById("ad-casc-out");
+  out.innerHTML=`<div class="ad-out" id="adc-txt" style="margin-bottom:14px"></div>`;
+  const txtEl=document.getElementById("adc-txt");
+  const T="早上好。今天旧金山多云转晴，适合出门；你关注的茅台早盘小幅高开，整体平稳。";
+  // 中文：逐字（每个汉字一个 token）
+  const fontPx=18, yoff=fontPx*APPLE.yoffPct;
+  const tcfg={stiffness:APPLE.k,damping:APPLE.b,mass:1,precision:0.01};
+  let wi=0;const toks=[];
+  Array.from(T).forEach(ch=>{
+    const s=document.createElement("span");s.className="u";s.textContent=ch;s.style.opacity="0";s.style.filter=`blur(${APPLE.blur}px)`;txtEl.appendChild(s);
+    toks.push({s,i:wi++,sp:new Spring(yoff,tcfg),st:false,t0:0});
+  });
+  // 卡片：用 专属卡片-demo 的原版天气卡 + 股票卡
+  const c1=document.createElement("div");c1.className="cc weatherC";
+  c1.innerHTML=`<div class="top"><span class="city">旧金山</span><span class="ic">🌤</span></div>`+
+    `<div class="temp">22°</div>`+
+    `<div class="bottom"><span class="cond">多云转晴</span><span class="hl">H:24° L:16°</span></div>`;
+  const c2=document.createElement("div");c2.className="cc stockC";
+  c2.innerHTML=`<div class="stk-head"><span class="stk-name">贵州茅台</span><span class="stk-code">600519</span></div>`+
+    `<div class="stk-price">1680.50</div><div class="stk-change">+12.30　+0.74%</div>`;
+  [c1,c2].forEach(c=>{c.style.opacity="0";c.style.transform="translateY(28px)";out.appendChild(c);});
+  const sp1=new Spring(28,{stiffness:CASC.k,damping:CASC.b,mass:1,precision:0.01});
+  const sp2=new Spring(28,{stiffness:CASC.k,damping:CASC.b,mass:1,precision:0.01});
+
+  const CHAR_STG=CASC.stg;   // 中文逐字间隔(可调)
+  requestAnimationFrame(()=>{
+    // 量行号（逐行亮度）
+    let lineTops=[];toks.forEach(it=>{const t=it.s.offsetTop;if(!lineTops.includes(t))lineTops.push(t);});
+    lineTops.sort((a,b)=>a-b);toks.forEach(it=>{it.line=lineTops.indexOf(it.s.offsetTop);});
+    const t0=performance.now()+220;let phase=0,lastWordAt=t0;
+    // 文字总时长估算
+    toks.forEach(it=>{lastWordAt=Math.max(lastWordAt,t0+it.i*CHAR_STG+it.line*APPLE.lineDelay);});
+    loop((dt,now)=>{let alive=true;
+      for(const it of toks){
+        const at=t0+it.i*CHAR_STG+it.line*APPLE.lineDelay;
+        if(now<at)continue;
+        if(!it.st){it.st=true;it.sp.setTarget(0);it.t0=now;}
+        const a=it.sp.step(dt);const y=it.sp.value;
+        it.s.style.transform=`translateY(${y.toFixed(2)}px)`;
+        const prog=1-Math.min(1,Math.abs(y)/Math.max(yoff,0.5));
+        const lineMax=APPLE_LINE[Math.min(it.line,APPLE_LINE.length-1)];
+        it.s.style.opacity=(Math.min(1,prog/APPLE.revealEnd)*lineMax).toFixed(3);
+        const b=APPLE.blur*(1-prog);it.s.style.filter=b>0.05?`blur(${b.toFixed(2)}px)`:"none";
+        const av=APPLE.abStart*8*(1-prog);
+        it.s.style.textShadow=av>0.1?`${(-av).toFixed(2)}px 0 rgba(255,40,40,.7),${av.toFixed(2)}px 0 rgba(0,200,255,.7)`:"none";
+        if(!a){it.s.style.transform="none";it.s.style.filter="none";it.s.style.textShadow="none";it.s.style.opacity=lineMax.toFixed(3);}
+      }
+      const txtDone=now>lastWordAt+200;
+      if(txtDone){if(phase<1){phase=1;sp1.setTarget(0);}sp1.step(dt);c1.style.transform=`translateY(${sp1.value.toFixed(2)}px)`;c1.style.opacity=(1-Math.min(1,Math.abs(sp1.value)/28)).toFixed(3);}
+      if(phase>=1&&sp1.value<28*(1-CASC.th/100)){if(phase<2){phase=2;sp2.setTarget(0);}sp2.step(dt);c2.style.transform=`translateY(${sp2.value.toFixed(2)}px)`;c2.style.opacity=(1-Math.min(1,Math.abs(sp2.value)/28)).toFixed(3);}
+      if(now>lastWordAt+2600){c1.style.transform="none";c1.style.opacity="1";c2.style.transform="none";c2.style.opacity="1";alive=false;}
+      return alive;});
+  });
+}
+
+// ── 绑定 ──
+function adTabs(wrap,attr,cb){document.querySelectorAll(`#${wrap} .ad-tab[${attr}]`).forEach(t=>t.addEventListener("click",()=>{
+  document.querySelectorAll(`#${wrap} .ad-tab[${attr}]`).forEach(x=>x.classList.remove("on"));t.classList.add("on");cb(t.getAttribute(attr));}));}
+adTabs("ad-text","data-mode",v=>{adTextMode=v;adPlayText();});
+adTabs("ad-text","data-len",v=>{adTextLen=v;adPlayText();});
+adTabs("ad-apple","data-applelen",v=>{appleLen=v;adPlayApple();});
+adTabs("ad-card","data-cardmode",v=>{adCardMode=v;adPlayCard();});
+// 苹果默认 demo 的 slider（改 APPLE 对象 + APPLE_LINE，adPlayApple 直接读）
+function ppBind(id,unit,apply){
+  const i=document.getElementById("pp-"+id),v=document.getElementById("ppv-"+id);
+  const u=()=>{apply(+i.value);v.textContent=(+i.value).toFixed(unit==="ms"?1:2)+(unit==="ms"?"ms":unit==="px"?"px":"");};
+  i.addEventListener("input",()=>{u();adPlayApple();});u();
+}
+// Word/Line Delay：slider 显真值 ms，内部 ×10 放大（真值 1.1ms 太快看不见）
+ppBind("wd","ms",x=>APPLE.wordDelay=x*10);
+ppBind("ld","ms",x=>APPLE.lineDelay=x*10);
+ppBind("yo","",x=>APPLE.yoffPct=x);
+// Response/Damping → k/b
+ppBind("r","",x=>{APPLE.k=Math.pow(2*Math.PI/x,2);});
+ppBind("d","",x=>{APPLE.b=2*x*Math.sqrt(APPLE.k);});
+ppBind("re","",x=>APPLE.revealEnd=x);
+ppBind("bl","px",x=>APPLE.blur=x);
+ppBind("ab","",x=>APPLE.abStart=x);
+[0,1,2,3,4].forEach(j=>ppBind("l"+j,"",x=>APPLE_LINE[j]=x));
+// 组合 demo slider
+function kpBind(id,unit,apply){const i=document.getElementById("kp-"+id),v=document.getElementById("kpv-"+id);
+  const u=()=>{apply(+i.value);v.textContent=(unit==="%"?(+i.value)+"%":unit==="ms"?(+i.value)+"ms":(+i.value).toFixed(2));};
+  i.addEventListener("input",()=>{u();adPlayCasc();});u();}
+kpBind("th","%",x=>CASC.th=x);
+kpBind("stg","ms",x=>CASC.stg=x);
+kpBind("r","",x=>{CASC.k=Math.pow(2*Math.PI/x,2);});
+kpBind("d","",x=>{CASC.b=2*x*Math.sqrt(CASC.k);});
+// 文字参数 slider
+function adBind(id,key,unit){const i=document.getElementById("ap-"+id),v=document.getElementById("apv-"+id);
+  const u=()=>{adP[key]=+i.value;v.textContent=(+i.value)+unit;};i.addEventListener("input",()=>{u();adPlayText();});u();}
+adBind("k","k","");adBind("b","b","");adBind("stg","stg","ms");adBind("yoff","yoff","px");adBind("blur","blur","px");adBind("ab","ab","px");
+// 图片 slider（苹果真值）
+function imgBind(id,key){const i=document.getElementById("ip-"+id),v=document.getElementById("ipv-"+id);
+  const u=()=>{adImg[key]=+i.value;v.textContent=(+i.value).toFixed(2);};i.addEventListener("input",()=>{u();adPlayImg();});u();}
+imgBind("resp","resp");imgBind("damp","damp");imgBind("nf","noiseFreq");imgBind("na","noiseAmp");imgBind("as","asym");
+// Elasticity slider
+function elBind(id,key,unit){const i=document.getElementById("ep-"+id),v=document.getElementById("epv-"+id);
+  const u=()=>{adEl[key]=+i.value;v.textContent=(+i.value).toFixed(unit==="pt"?1:2)+(unit==="pt"?"pt":"");};
+  i.addEventListener("input",()=>{u();adPlayElastic();});u();}
+elBind("bo","bounciness","");elBind("cm","collisionMargin","pt");elBind("df","damping","");
+// 卡片 slider
+function cardBind(id,key,unit){const i=document.getElementById("cp-"+id),v=document.getElementById("cpv-"+id);
+  const u=()=>{adCard[key]=+i.value;v.textContent=(+i.value)+unit;};i.addEventListener("input",()=>{u();adPlayCard();});u();}
+cardBind("k","k","");cardBind("b","b","");cardBind("yoff","yoff","px");cardBind("th","th","%");
+document.querySelectorAll(".ad-replay").forEach(b=>b.addEventListener("click",()=>({text:adPlayText,apple:adPlayApple,img:adPlayImg,el:adPlayElastic,card:adPlayCard,casc:adPlayCasc})[b.dataset.play]()));
+
+// 进视口才播（避免一进页面全跑完）
+const PLAY={"ad-text":adPlayText,"ad-apple":adPlayApple,"ad-img":adPlayImg,"ad-el":adPlayElastic,"ad-card":adPlayCard,"ad-casc":adPlayCasc};
+const io=new IntersectionObserver((es)=>{es.forEach(e=>{if(e.isIntersecting){
+  (PLAY[e.target.id]||(()=>{}))();io.unobserve(e.target);
+}});},{threshold:0.4});
+Object.keys(PLAY).forEach(id=>{const el=document.getElementById(id);if(el)io.observe(el);});
+</script>
+</body>
+</html>

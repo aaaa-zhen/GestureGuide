@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="15" fill="#1a1a1a"/>
+  <!-- 一张卡片：标题条 + 两行正文，呼应「从一句话到一张卡片」 -->
+  <rect x="16" y="14" width="32" height="36" rx="6" fill="#fff"/>
+  <rect x="21" y="21" width="22" height="5" rx="2.5" fill="#1a1a1a"/>
+  <rect x="21" y="31" width="22" height="3" rx="1.5" fill="#c4c4c4"/>
+  <rect x="21" y="38" width="15" height="3" rx="1.5" fill="#c4c4c4"/>
+</svg>
