@@ -208,6 +208,23 @@
 
   <hr>
 
+  <p class="act-label" id="m1b">补充</p>
+  <h2>它的答案到底从哪来——是谷歌吗？</h2>
+
+  <p class="ask">你问 Siri 一个问题，它的答案是去谷歌搜的吗？</p>
+
+  <p>不一定——<strong>「搜」其实分三条路，看你问的是哪种</strong>：</p>
+
+  <div class="terms">
+    <div class="row"><div class="t">① 开网页去搜</div><div class="d">「搜一下 XX」这种要打开网页结果的——<strong>用你 Safari 里设的默认引擎</strong>（多数人是 Google，也可改 Bing / DuckDuckGo / 百度…）。苹果<strong>不锁死，跟你的设置走</strong>。</div></div>
+    <div class="row"><div class="t">② Siri 直接答的知识</div><div class="d">「珠峰多高」「换算单位」这种不开浏览器、直接给答案的——走<strong>苹果自己的</strong>知识库（<code>AppleKnowledgeBase</code>）+ 它自有的搜索 / 答案合成引擎 <code>OmniSearch</code>（<code>OmniSearchAnswerSynthesis</code>）。<strong>不是谷歌。</strong></div></div>
+    <div class="row"><div class="t">③ 复杂开放问题</div><div class="d">端侧 / 苹果云答不了的开放问题——<strong>询问你同意后</strong>转给 <code>ChatGPT</code>（符号里连账户体系都有）。单独一条、要授权。</div></div>
+  </div>
+
+  <p>所以「搜谷歌还是」的准确回答是：<strong>开网页搜 = 你设的引擎（默认多是谷歌）；但 Siri 的智能问答不靠谷歌，靠它自己那套（OmniSearch + 苹果知识库），搞不定才上 ChatGPT。</strong>这也呼应上一节——<strong>「智能」可以借外部（引擎、ChatGPT），但答完要「做」的动作，仍走端侧那张固定清单。</strong></p>
+
+  <hr>
+
   <p class="act-label" id="m2">第二节</p>
   <h2>第一方应用，开放了什么</h2>
 
@@ -344,7 +361,7 @@
 
   <div class="footer">
     数据来源 · AppIntentSchemas · HomeAppIntents · Photos AppIntents · OmniSearch · CLIPIndex（iOS 27 / macOS 26）<br>
-    关键符号 · AnswerSynthesisPrivateCloudCompute · executionPlan · ExecutorAppIntent · AccessoryEntity · AppShortcutPhrase · AutomationTrigger · WFAction · ComposeWorkflow · WorkflowGeneration · UseModelAction · IntelligenceAction · CLIPCentroidCodebook · cosineSimilarity<br>
+    关键符号 · AnswerSynthesisPrivateCloudCompute · executionPlan · ExecutorAppIntent · AccessoryEntity · AppShortcutPhrase · AutomationTrigger · WFAction · ComposeWorkflow · WorkflowGeneration · UseModelAction · OmniSearchAnswerSynthesis · AppleKnowledgeBase · ChatGPT · CLIPCentroidCodebook · cosineSimilarity<br>
     方法 · 系统 dyld shared cache 导出符号 + cstring 提取 + swift demangle<br>
     仅供研究学习 · 符号反映接口结构，不含内部实现细节
   </div>
