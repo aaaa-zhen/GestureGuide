@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Siri 的整体架构 · 从模型到产品的一张全景图</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<style>
+  :root{
+    --ink:#1a1a1a; --ink-soft:#3a3a3a; --ink-dim:#9a9a9a;
+    --line:#e6e6e6; --bg:#ffffff; --code-bg:#f6f6f6;
+    --good:#1d8a4e; --accent:#0a6cff; --warm:#c4702a;
+    --mono:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"PingFang SC","Segoe UI","Helvetica Neue","Microsoft YaHei",sans-serif;
+    --r-card:28px; --r-box:18px; --r-chip:12px; --r-tag:7px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:18px;line-height:1.9;
+    -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+  .doc{max-width:680px;margin:0 auto;padding:84px 28px 140px}
+
+  h1{font-size:34px;font-weight:700;line-height:1.35;letter-spacing:-.01em;margin-bottom:8px}
+  .sub{font-size:16px;color:var(--ink-dim);margin-bottom:56px;line-height:1.7}
+  h2{font-size:25px;font-weight:700;line-height:1.4;letter-spacing:-.01em;margin:72px 0 26px}
+  h3{font-size:19px;font-weight:700;margin:36px 0 16px}
+  p{margin-bottom:26px;color:var(--ink-soft)}
+  p:last-child{margin-bottom:0}
+  strong{font-weight:700;color:var(--ink)}
+  code{font-family:var(--mono);font-size:.82em;background:var(--code-bg);padding:2px 6px;
+    border-radius:var(--r-tag);color:var(--ink);white-space:nowrap}
+  .ask{font-size:20px;font-weight:600;color:var(--ink);margin-bottom:26px}
+
+  .note-box{background:#f7f7f7;border-radius:var(--r-box);padding:22px 24px;margin:0 0 48px}
+  .note-box p{font-size:15px;line-height:1.75;color:var(--ink-soft);margin-bottom:12px}
+  .note-box p:last-child{margin-bottom:0}
+  .note-box .nb-h{font-size:13px;font-weight:700;color:var(--ink);letter-spacing:.02em;margin-bottom:10px;display:block}
+
+  ul,ol{margin:0 0 26px;padding-left:0;list-style:none}
+  li{margin-bottom:13px;color:var(--ink-soft);padding-left:26px;position:relative}
+  li::before{content:"";position:absolute;left:5px;top:13px;width:6px;height:6px;border-radius:50%;background:var(--ink-dim)}
+  li strong{display:inline}
+
+  hr{border:none;border-top:1px solid var(--line);margin:60px 0}
+  .act-label{font-family:var(--mono);font-size:13px;color:var(--ink-dim);letter-spacing:.04em;margin-top:64px;margin-bottom:0}
+  .act-label + h2{margin-top:8px}
+  blockquote{border-left:3px solid var(--ink);padding-left:22px;margin:0 0 26px}
+  blockquote p{margin:0;color:var(--ink-soft)}
+
+  /* ===== 分层架构图 ===== */
+  .stack{margin:8px 0 16px}
+  .layer{border:1px solid var(--line);border-radius:var(--r-box);padding:16px 18px;margin-bottom:8px;
+    display:flex;gap:14px;align-items:flex-start;background:#fff;transition:background .15s}
+  .layer:hover{background:#fafafa}
+  .layer .lx{flex:0 0 auto;width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;
+    font-size:15px}
+  .layer .lb{flex:1;min-width:0}
+  .layer .lt{font-size:15.5px;font-weight:700;color:var(--ink);display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+  .layer .lt .en{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--ink-dim)}
+  .layer .ld{font-size:13px;color:var(--ink-dim);line-height:1.5;margin-top:4px}
+  .layer.l-ui{background:#f1faf4;border-color:#cfeada}
+  .layer.l-orch{background:#eef4ff;border-color:#d4e2fb}
+  .layer.l-model{background:#fbf3ea;border-color:#f0ddc6}
+  .stack-arrow{text-align:center;font-size:13px;color:var(--ink-dim);margin:2px 0;font-family:var(--mono)}
+  .stack-cap{font-size:13px;color:var(--ink-dim);text-align:center;margin:6px 0 26px}
+
+  /* 流程步骤 */
+  .pipe{border:1px solid var(--line);border-radius:var(--r-card);padding:24px 20px;margin:8px 0 26px;background:#fbfbfb}
+  .pstep{display:flex;gap:13px;align-items:flex-start;margin-bottom:16px}
+  .pstep:last-child{margin-bottom:0}
+  .pstep .pn{flex:0 0 auto;width:24px;height:24px;border-radius:50%;background:var(--ink);color:#fff;
+    font-family:var(--mono);font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center}
+  .pstep .pb{flex:1;font-size:14px;line-height:1.55;color:var(--ink-soft)}
+  .pstep .pb b{color:var(--ink)} .pstep .pb code{font-size:.85em}
+  .pstep .pb .pl{font-size:11px;font-family:var(--mono);color:var(--accent);display:block;margin-top:2px}
+
+  /* 术语表 */
+  .terms{margin:0 0 26px}
+  .terms .row{display:flex;gap:16px;padding:13px 0;border-top:1px solid var(--line)}
+  .terms .row:last-child{border-bottom:1px solid var(--line)}
+  .terms .t{font-family:var(--mono);font-size:12.5px;font-weight:600;flex:0 0 165px;color:var(--ink);line-height:1.55;word-break:break-all}
+  .terms .d{font-size:14.5px;color:var(--ink-soft);line-height:1.55}
+
+  /* 两栏 */
+  .duo{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:8px 0 26px}
+  .duo .col{border:1px solid var(--line);border-radius:var(--r-box);padding:20px}
+  .duo .col.a{background:#f1faf4;border-color:#cfeada}
+  .duo .col.b{background:#eef4ff;border-color:#d4e2fb}
+  .duo .ch{font-size:15px;font-weight:700;margin-bottom:12px}
+  .duo .col.a .ch{color:var(--good)} .duo .col.b .ch{color:var(--accent)}
+  .duo ul{margin:0} .duo li{font-size:13.5px;line-height:1.55;margin-bottom:9px;padding-left:17px}
+  .duo li::before{width:5px;height:5px;top:9px;left:3px}
+  .duo .col.a li::before{background:#7cc79c} .duo .col.b li::before{background:#9bbef5}
+
+  .footer{margin-top:80px;padding-top:28px;border-top:1px solid var(--line);
+    font-family:var(--mono);font-size:12px;color:var(--ink-dim);line-height:1.9}
+
+  @media(max-width:640px){
+    body{font-size:17px}
+    .doc{padding:56px 20px 100px}
+    h1{font-size:27px} h2{font-size:21px}
+    .duo{grid-template-columns:1fr}
+    .terms .row{flex-direction:column;gap:4px}
+    .terms .t{flex:none}
+    li{overflow-wrap:anywhere} code{white-space:normal;overflow-wrap:anywhere}
+  }
+</style>
+</head>
+<body>
+<article class="doc">
+
+  <h1>Siri 的整体架构</h1>
+  <p class="sub">不是一个模型，是一套两百多个框架组成的系统 · 从基座模型，到怎么编排，到开发者怎么接、用户从哪进 · 基于系统私有框架的符号分析</p>
+
+  <div class="note-box">
+    <span class="nb-h">先建立一个总印象</span>
+    <p>把系统翻开会发现：和 Siri / Apple Intelligence 相关的私有框架有<strong>两百多个</strong>，由 <code>assistantd</code> 等守护进程串起来。但它不是一团乱麻——是清晰的<strong>分层</strong>：最底下是模型，往上是「怎么想、怎么调工具」的编排，再往上是上下文和工具，最顶上才是你看到的 Siri、写作工具、视觉智能这些产品形态。</p>
+    <p>本文先给一张<strong>分层全景图</strong>，再分别从「<strong>一句话怎么流过这套系统</strong>」「<strong>开发者怎么把 App 接进来</strong>」「<strong>用户从哪些入口进</strong>」三个角度拆开看。</p>
+  </div>
+
+  <h2>一张图：六层</h2>
+
+  <p>从下往上，每一层只干一件事，把结果交给上一层：</p>
+
+  <div class="stack">
+    <div class="layer l-ui">
+      <div class="lx">🟢</div>
+      <div class="lb"><div class="lt">产品形态层 <span class="en">Campo · GenerativeAssistantUI · VisualIntelligence</span></div>
+        <div class="ld">用户真正看到/用到的：Siri、打字 Siri、写作工具、视觉智能、通知摘要——多个入口，共用下面同一套引擎。</div></div>
+    </div>
+    <div class="stack-arrow">↑ 调用</div>
+    <div class="layer">
+      <div class="lx">🧰</div>
+      <div class="lb"><div class="lt">工具层 <span class="en">AppIntents · ToolKit · AssistantSchema</span></div>
+        <div class="ld">把「能做的动作」标准化：每个 App 暴露的 intent、每个 HomeKit 配件，都变成可被调用的工具。</div></div>
+    </div>
+    <div class="stack-arrow">↑ 提供能力</div>
+    <div class="layer">
+      <div class="lx">🧠</div>
+      <div class="lb"><div class="lt">上下文层 <span class="en">IntelligenceFlowContext · CoreKnowledge · 识屏</span></div>
+        <div class="ld">「现在屏幕上有什么、用户是谁、相关的记忆/知识」——给模型决策用的背景。</div></div>
+    </div>
+    <div class="stack-arrow">↑ 注入背景</div>
+    <div class="layer l-orch">
+      <div class="lx">🎯</div>
+      <div class="lb"><div class="lt">编排层 <span class="en">IntelligenceFlowRuntime · PlannerAgent</span></div>
+        <div class="ld">中枢。把请求拆成步骤、选工具、排并行/串行、调模型、收结果。Siri「会做事」的大脑。</div></div>
+    </div>
+    <div class="stack-arrow">↑ 驱动</div>
+    <div class="layer l-model">
+      <div class="lx">⚙️</div>
+      <div class="lb"><div class="lt">模型层 <span class="en">AFM 基座 + LoRA 适配器</span></div>
+        <div class="ld">一个基座大模型 + 一堆按任务训练的小适配器；端侧一套、Private Cloud Compute 一套，按设备能力路由。</div></div>
+    </div>
+    <div class="stack-arrow">↑ 承载</div>
+    <div class="layer">
+      <div class="lx">🛠️</div>
+      <div class="lb"><div class="lt">基础设施层 <span class="en">IntelligencePlatform · GenerativeFunctions · assistantd</span></div>
+        <div class="ld">推理调度、XPC 通信、特征开关、遥测、隐私边界——让上面几层能跑起来的地基。</div></div>
+    </div>
+  </div>
+  <p class="stack-cap">绿=产品 · 蓝=编排 · 橙=模型 · 白=支撑</p>
+
+  <hr>
+
+  <p class="act-label">逐层拆开</p>
+  <h2>每一层，到底是什么</h2>
+
+  <p>上面是骨架，下面把每层翻开，看它由哪些框架组成、关键类怎么运作。</p>
+
+  <h3>① 基础设施层：一个可查询的「个人知识平台」</h3>
+  <p><code>IntelligencePlatform</code> 不只是「地基」——它本身是一套<strong>个人数据的查询引擎</strong>。挖开看：</p>
+  <div class="terms">
+    <div class="row"><div class="t">IntelligencePlatformQuery</div><div class="d">一套 <strong>SQL 虚拟表</strong>引擎（<code>SQLConnection</code> / <code>VirtualTable</code> / <code>ResultSetCursor</code>）——把分散的个人数据当成可 SQL 查询的表。</div></div>
+    <div class="row"><div class="t">…DataActions</div><div class="d"><code>GlobalKnowledgeQueryService</code> / <code>ActionsQueryService</code>——查「你用过哪些 App、去过哪、活动片段」等可执行的数据动作。</div></div>
+    <div class="row"><div class="t">EntitySubgraphService</div><div class="d">从大知识图谱里切出「和当前相关」的子图，喂给上层，而不是把整张图丢上去。</div></div>
+    <div class="row"><div class="t">assistantd</div><div class="d">总守护进程，串起 XPC 通信、特征开关、遥测、隐私边界。</div></div>
+  </div>
+
+  <h3>② 模型层：一个基座 + 一堆任务适配器</h3>
+  <p>核心是 <code>AFMInference</code>（Apple Foundation Model 推理），用 actor 模型组织（<code>AFMInferenceActor</code> / <code>AFMInferenceProvider</code>）。关键设计是<strong>基座不动、适配器换</strong>：</p>
+  <div class="terms">
+    <div class="row"><div class="t">baseModel</div><div class="d">一个通用基座大模型，常驻。端侧一套、Private Cloud Compute 一套。</div></div>
+    <div class="row"><div class="t">adapterModel（LoRA）</div><div class="d">按任务训练的小适配器（<code>adapterModelID</code> / <code>adapterModelMetadata</code>）：改写用一个、总结用一个、规划用一个——<strong>换适配器不换基座</strong>，省内存、切换快。</div></div>
+    <div class="row"><div class="t">AFMDecodeFunctionDescriptor</div><div class="d">描述「这次生成怎么解码」——约束解码就挂在这一层（见下）。</div></div>
+  </div>
+
+  <h3>③ 上下文层：识屏 + 一个真·知识图谱</h3>
+  <p>给模型决策的「背景」不止屏幕。<code>CoreKnowledge</code> 是一个落盘的<strong>个人知识库</strong>：</p>
+  <div class="terms">
+    <div class="row"><div class="t">CKKnowledgeStore</div><div class="d">知识存储；内容以 <code>CKJSONLDGraph</code>（JSON-LD 图谱）组织——人、地点、App、事件互相连成图。</div></div>
+    <div class="row"><div class="t">CKHistoricEvent</div><div class="d">历史事件序列——「你昨天做了什么」这类时间线知识。</div></div>
+    <div class="row"><div class="t">KnowledgeGraphKit</div><div class="d">底层图引擎：节点 / 边 / 谓词 / 过滤，还用 <code>Accelerate</code> 做向量计算（图谱 + 向量混合检索）。</div></div>
+    <div class="row"><div class="t">IntelligenceFlowContext</div><div class="d">识屏：当前屏幕上的结构化实体（另一篇详解）。</div></div>
+  </div>
+
+  <h3>④ 编排层：规划模型 + 工具检索 + 执行会话</h3>
+  <p>这是中枢，由 <code>IntelligenceFlowRuntime</code>（守护进程 <code>intelligenceflowd</code>）驱动：</p>
+  <div class="terms">
+    <div class="row"><div class="t">PlannerAgent</div><div class="d">一个专门的「规划模型」（<code>PlannerAgentModel</code>），被训练来拆任务、选工具、生成执行计划。</div></div>
+    <div class="row"><div class="t">ToolRetrieval（查库）</div><div class="d">工具不是全塞给模型——<code>ToolRetrievalDatabaseConfiguration</code> 表明它从<strong>工具数据库里检索</strong>相关的几个（<code>ToolRetrievalSearchResult</code>），再给 Planner。</div></div>
+    <div class="row"><div class="t">ToolExecutionSession</div><div class="d">一次请求的工具执行会话，按依赖图并行 / 串行调（<code>parallelToolCalling</code>）。</div></div>
+    <div class="row"><div class="t">ConstrainedDecoding</div><div class="d">约束解码——把工具清单变成 <strong>token 白名单</strong>（<code>allowedTokens</code> / <code>allowedTokensClasses</code>），模型生成时只能吐出清单内的工具名和参数。</div></div>
+  </div>
+
+  <h3>⑤ 工具层 / ⑥ 产品层</h3>
+  <p>这两层在后面「开发架构」「产品架构」两个视角里细讲——工具层是 App Intents / AssistantSchema（开发者怎么把能力接进来），产品层是 Campo / 视觉智能 / 写作工具（用户从哪进、结果怎么呈现）。</p>
+
+  <hr>
+
+  <p class="act-label">视角一</p>
+  <h2>一句话，怎么流过这六层</h2>
+
+  <p>「把刚拍的照片调亮，存进旅行相册」——跟着它走一遍，每一层的角色就清楚了：</p>
+
+  <div class="pipe">
+    <div class="pstep"><span class="pn">1</span><span class="pb"><b>入口接住</b>：产品层（Siri / 打字 / 视觉智能）收到请求，标好「从哪进来的」。<span class="pl">EntryPoint · requestSource</span></span></div>
+    <div class="pstep"><span class="pn">2</span><span class="pb"><b>选模型</b>：按设备能力决定端侧还是上云。<span class="pl">deviceCapability · pccAsDefault</span></span></div>
+    <div class="pstep"><span class="pn">3</span><span class="pb"><b>装上下文</b>：识屏给「当前是哪张照片」，知识层给「旅行相册是哪个」。<span class="pl">IntelligenceFlowContext</span></span></div>
+    <div class="pstep"><span class="pn">4</span><span class="pb"><b>规划</b>：Planner 把它拆成步骤、选出对应的 App Intents 工具、排好顺序。<span class="pl">PlannerAgent · GeneratePlan</span></span></div>
+    <div class="pstep"><span class="pn">5</span><span class="pb"><b>约束生成</b>：模型生成「调哪个工具、填什么参数」时被强制只能从清单里选（见下）。<span class="pl">ConstrainedDecoding</span></span></div>
+    <div class="pstep"><span class="pn">6</span><span class="pb"><b>端侧执行</b>：计划回到端侧执行器，真正调 Photos 改图、存相册。<span class="pl">ExecutorAppIntent</span></span></div>
+    <div class="pstep"><span class="pn">7</span><span class="pb"><b>呈现</b>：结果交回产品层，渲染成卡片 / 朗读。<span class="pl">Campo（生成式 UI）</span></span></div>
+  </div>
+
+  <h3>编排层的两个关键设计</h3>
+  <p><strong>① 规划用的是一个专门的「规划模型」</strong>（<code>PlannerAgent</code> / <code>PlannerAgentModel</code>）——不是拿通用模型随便答，而是有个被训练来「拆任务、选工具」的角色。多任务时它按依赖图决定并行还是串行（<code>parallelToolCalling</code> / <code>ToolExecutionMode</code>）。</p>
+  <p><strong>② 约束解码（<code>ConstrainedDecoding</code>）是「不出幻觉工具」的物理保证。</strong>模型在生成工具调用时，<strong>被语法强制只能产出清单里真实存在的工具名和参数</strong>——它想编一个不存在的工具都生成不出来。这就是为什么 Siri 不会「调用一个根本没有的 App 功能」。封闭，不是靠提示词约束，是靠解码层焊死。</p>
+
+  <blockquote>
+    <p>看出规律了：<strong>云负责「想」、端负责「做」，而「想」本身还被约束解码框在工具清单内。</strong>智能可以很强，但能做什么始终是确定、可控的。</p>
+  </blockquote>
+
+  <hr>
+
+  <p class="act-label">视角二 · 技术</p>
+  <h2>开发架构：系统内部怎么运作</h2>
+
+  <p>抛开产品，看系统自己。一次请求在内部要喂进去四种东西、走一套工具机制——这是「它凭什么答得准」的技术底座。</p>
+
+  <h3>上下文：当下这一刻的背景</h3>
+  <p>模型决策前，系统先拼出「现在的处境」。它<strong>不是只看你说的话</strong>，而是把多路上下文一起注入：</p>
+  <div class="terms">
+    <div class="row"><div class="t">屏幕上下文</div><div class="d">识屏：当前屏幕的结构化实体（你在看哪张照片、哪条消息）。<code>IntelligenceFlowContext</code></div></div>
+    <div class="row"><div class="t">会话上下文</div><div class="d">本轮对话的来龙去脉、上一句指代了什么。<code>IntelligenceFlowConversationRuntime</code></div></div>
+    <div class="row"><div class="t">设备 / 时空</div><div class="d">时间、地点、当前前台 App、设备状态。</div></div>
+  </div>
+
+  <h3>Personal Context：你是谁</h3>
+  <p>再叠一层「关于你的长期背景」。这是一个落盘的<strong>个人知识图谱</strong>（<code>CoreKnowledge.CKKnowledgeStore</code>，JSON-LD 图谱），把你的联系人、常去地点、App 使用、历史事件连成图。请求时只<strong>切出相关子图</strong>注入（<code>EntitySubgraphService</code>），不是把你整个人生塞给模型。</p>
+  <div class="terms">
+    <div class="row"><div class="t">CKKnowledgeStore</div><div class="d">持久个人知识库（<code>CKPersistentStoreHandler</code> 落盘）。</div></div>
+    <div class="row"><div class="t">CKHistoricEvent</div><div class="d">历史事件时间线——「你上周做过什么」。</div></div>
+    <div class="row"><div class="t">assertFact</div><div class="d">往知识库里<strong>断言一条事实</strong>并持久化的写入口。</div></div>
+  </div>
+
+  <h3>长期记忆 &amp; 自我学习：明天还记得吗？</h3>
+  <p>系统确实有<strong>持久记忆</strong>（<code>MemoryStore</code> + <code>memoryPersister</code> 落盘）和<strong>反馈学习</strong>（<code>feedbackLearning.donateInteraction</code> / <code>interactionHistory</code> 带评分权重）。但要分清两种「记住」：</p>
+  <div class="duo">
+    <div class="col a">
+      <div class="ch">✓ 隐式学习（强）</div>
+      <ul>
+        <li>从你<strong>反复的行为</strong>里学：常给谁发消息、几点开什么 App</li>
+        <li>交互被 <code>donateInteraction</code> 记录、按 <code>scoreWeight</code> 加权</li>
+        <li>转化成「建议 / 排序」，越用越顺手</li>
+      </ul>
+    </div>
+    <div class="col b">
+      <div class="ch">? 显式偏好（弱 / 不确定）</div>
+      <ul>
+        <li>「我不吃辣」这种<strong>随口一句的规则</strong></li>
+        <li>系统<strong>有</strong> <code>assertFact</code> 能存事实的机制</li>
+        <li>但「随口说 → 自动记成规则 → 明天主动应用」这条链，<strong>接口层看不出已贯通</strong>——更可能要靠明确的设置 / 重复行为，而非一句话</li>
+      </ul>
+    </div>
+  </div>
+  <p>所以诚实的答案：<strong>「今天说不吃辣、明天点外卖自动避开」——苹果有做到它的底层零件（持久事实 + 反馈学习），但是否真的「一句话就记住并主动用」，符号层无法证实。</strong>它更擅长从你<strong>做</strong>了什么学，而不是你<strong>说</strong>了一句什么。</p>
+
+  <h3>Tool 调用：怎么从一堆能力里挑对的</h3>
+  <p>工具（App Intents）可能成百上千，不可能全塞给模型。机制是<strong>「检索 + 约束生成」</strong>：</p>
+  <div class="terms">
+    <div class="row"><div class="t">ToolRetrieval</div><div class="d">先从<strong>工具数据库</strong>里检索出和当前请求相关的几个（<code>ToolRetrievalDatabaseConfiguration</code> / <code>SearchResult</code>），不是全量。</div></div>
+    <div class="row"><div class="t">PlannerAgent</div><div class="d">专门的规划模型，决定调哪个、按什么顺序。</div></div>
+    <div class="row"><div class="t">ConstrainedDecoding</div><div class="d">生成工具调用时被 token 白名单（<code>allowedTokens</code>）<strong>焊死</strong>——只能吐出真实存在的工具和参数，编不出假的。</div></div>
+    <div class="row"><div class="t">ToolExecutionSession</div><div class="d">按依赖关系并行 / 串行执行，结果回收。</div></div>
+  </div>
+
+  <hr>
+
+  <p class="act-label">视角三 · 产品</p>
+  <h2>产品架构：能干什么，不能干什么</h2>
+
+  <p>抛开内部，从用户角度看：这套系统的<strong>能力边界</strong>到底在哪。</p>
+
+  <h3>从哪些入口进</h3>
+  <p>多个入口，共用底下同一套编排 + 模型（只是 <code>EntryPoint</code> 不同）：<strong>Siri / 打字 Siri</strong>（下指令）、<strong>识屏</strong>（问屏幕上的东西）、<strong>视觉智能</strong>（举着问「这是什么」）、<strong>写作工具</strong>（选中文本改写 / 总结）、<strong>通知摘要 / 建议</strong>（主动推）。</p>
+
+  <h3>能干什么 vs 不能干什么</h3>
+  <div class="duo">
+    <div class="col a">
+      <div class="ch">✓ 能</div>
+      <ul>
+        <li>调<strong>第一方 App 的标准动作</strong>：建相册、发邮件、开灯、改图（深到调滑块）</li>
+        <li>调<strong>第三方</strong>：只要它接了 App Intents / HomeKit</li>
+        <li>跨 App<strong>串多步</strong>：查 A 再据此做 B</li>
+        <li>读屏、查个人知识、改写 / 总结 / 视觉问答</li>
+      </ul>
+    </div>
+    <div class="col b">
+      <div class="ch">✕ 不能</div>
+      <ul>
+        <li>做<strong>标准动作域之外</strong>的事——App 没暴露的功能够不着</li>
+        <li>调<strong>任意外部工具 / 脚本</strong>（无 CLI、无任意插件）</li>
+        <li><strong>编一个不存在的能力</strong>——约束解码焊死了</li>
+        <li>上云也<strong>不增加</strong>能做的事，只让「想」更聪明</li>
+      </ul>
+    </div>
+  </div>
+  <p>一句话框定边界：<strong>能力 = 所有 App 通过标准 schema 暴露出来的动作之和，一个不多、一个不少。</strong>智能可以无限涨，但能做什么是这张清单决定的。</p>
+
+  <h3>多任务并行是怎么样的</h3>
+  <p>一句话里好几件事（「看天气、查航班、把照片调亮存相册」），系统把它当<strong>复合请求</strong>（<code>compoundRequest</code>）处理：拆成步骤（<code>planStep</code>）→ 看步骤间<strong>有没有数据依赖</strong>（<code>dependencyGraph</code>）→ 无依赖的<strong>并行</strong>同时发（<code>parallelToolCalling</code>）、有依赖的<strong>串行</strong>按序等结果 → 汇总成一个回答。</p>
+  <blockquote>
+    <p>所以「看天气 + 查航班 + 改图」三件无关的事<strong>并行、几乎同时回来</strong>；而「查 A 城天气 → 订 A 城酒店」这种前后依赖的<strong>自动串起来</strong>。并行还是串行由依赖图决定，不靠模型每次自己琢磨——但每一步仍限于标准动作清单。</p>
+  </blockquote>
+
+  <hr>
+
+  <p>把三个视角合起来，整套架构的设计意图就一句话：</p>
+  <blockquote>
+    <p><strong>用分层把「智能」和「能做什么」彻底分开。</strong>模型层负责智能，可以靠端云、靠更大的模型不断变强；而「能做什么」被工具层、约束解码、标准 schema 死死框住，稳定、可控、可审计。<strong>上限交给模型，下限交给架构。</strong></p>
+  </blockquote>
+
+  <p class="ask">两百多个框架，最终就为了这一件事：让一句话，安全、一致地变成设备上真正发生的动作。</p>
+
+  <div class="footer">
+    数据来源 · IntelligenceFlowRuntime · PlannerRuntime · IntelligencePlatform · AFM · AppIntents · Campo（iOS 27 / macOS 26）<br>
+    关键符号 · PlannerAgent · ConstrainedDecoding · AFMInference · adapterModel · CKKnowledgeStore · MemoryStore · feedbackLearning · ToolRetrieval · compoundRequest · ExecutorAppIntent · AssistantSchema · EntryPoint · AssistantSchemaDenyList<br>
+    方法 · 系统 dyld shared cache 导出符号（267 个相关框架）+ swift demangle<br>
+    仅供研究学习 · 符号反映接口结构，分层为依职责归纳，不含内部实现细节
+  </div>
+
+</article>
+</body>
+</html>

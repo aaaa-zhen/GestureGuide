@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>容易忽略的出彩细节 · Siri 那些没人注意、却专门设计过的地方</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<style>
+  :root{
+    --ink:#1a1a1a; --ink-soft:#3a3a3a; --ink-dim:#9a9a9a;
+    --line:#e6e6e6; --bg:#ffffff; --code-bg:#f6f6f6;
+    --good:#1d8a4e; --accent:#0a6cff; --hi:#b3261e;
+    --mono:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"PingFang SC","Segoe UI","Helvetica Neue","Microsoft YaHei",sans-serif;
+    --r-box:18px; --r-tag:7px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:18px;line-height:1.85;
+    -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+  .doc{max-width:680px;margin:0 auto;padding:84px 28px 130px}
+  h1{font-size:33px;font-weight:700;line-height:1.35;letter-spacing:-.01em;margin-bottom:8px}
+  .sub{font-size:16px;color:var(--ink-dim);margin-bottom:52px;line-height:1.7}
+  p{margin-bottom:22px;color:var(--ink-soft)}
+  strong{font-weight:700;color:var(--ink)}
+  code{font-family:var(--mono);font-size:.82em;background:var(--code-bg);padding:2px 6px;border-radius:var(--r-tag);color:var(--ink);white-space:nowrap}
+
+  .note-box{background:#f7f7f7;border-radius:var(--r-box);padding:22px 24px;margin:0 0 48px}
+  .note-box p{font-size:15px;line-height:1.75;margin:0}
+
+  /* 每个细节一块 */
+  .item{border-top:1px solid var(--line);padding:34px 0 8px}
+  .item:last-of-type{border-bottom:1px solid var(--line);padding-bottom:34px}
+  .item .ih{display:flex;align-items:baseline;gap:11px;margin-bottom:6px}
+  .item .ico{font-size:22px;line-height:1}
+  .item h2{font-size:21px;font-weight:700;letter-spacing:-.01em}
+  .item .why{font-size:13px;color:var(--ink-dim);margin:0 0 16px 33px;line-height:1.5}
+  .item p{margin:0 0 0 33px}
+  .item .sym{margin:14px 0 0 33px;font-family:var(--mono);font-size:12px;color:var(--accent);
+    background:#f3f7ff;border-radius:var(--r-tag);padding:7px 11px;display:inline-block;line-height:1.6}
+
+  .ask{font-size:20px;font-weight:600;color:var(--ink);margin:48px 0 22px}
+  .foot{margin-top:60px;padding-top:24px;border-top:1px solid var(--line);
+    font-family:var(--mono);font-size:12px;color:var(--ink-dim);line-height:1.8}
+
+  @media(max-width:640px){
+    body{font-size:17px}.doc{padding:56px 20px 90px}h1{font-size:26px}
+    .item .why,.item p,.item .sym{margin-left:0}
+    code{white-space:normal;overflow-wrap:anywhere}
+  }
+</style>
+</head>
+<body>
+<article class="doc">
+
+  <h1>容易忽略的出彩细节</h1>
+  <p class="sub">Siri 那些你天天用、却从没注意到「背后专门设计过」的地方 · 基于系统私有框架的符号分析</p>
+
+  <div class="note-box">
+    <p>前面几篇讲的是大骨架——生成式 UI、识屏、画像、架构。但一个产品好不好用，往往藏在<strong>没人会专门夸、缺了却很难受</strong>的小处。这篇收集 7 个这样的细节：它们看起来理所当然，其实每一个都有专门的系统机制在背后撑着。</p>
+  </div>
+
+  <!-- 1 -->
+  <div class="item">
+    <div class="ih"><span class="ico">✋</span><h2>你能说到一半打断它</h2></div>
+    <div class="why">Siri 正在念，你插一句，它立刻停下来听——这件事其实不简单。</div>
+    <p>很多语音助手「一旦开口就必须说完」。Siri 有专门的<strong>可打断机制（barge-in）</strong>：它在播报时持续监听，你一开口就能切进去，而且有一套<strong>判断条件</strong>——区分「你是在打断我」还是「旁边有人说话 / 电视声」，不会被环境音误触。</p>
+    <div class="sym">BargeIn · BargeInConditions · BargeInContext</div>
+  </div>
+
+  <!-- 2 -->
+  <div class="item">
+    <div class="ih"><span class="ico">📱</span><h2>一屋子设备，只有一个应答</h2></div>
+    <div class="why">手机、手表、HomePod 都在，你喊「嘿 Siri」——为什么不是三个一起回？</div>
+    <p>因为有<strong>跨设备仲裁（arbitration）</strong>：多台设备同时听到唤醒词，它们之间会<strong>快速协商，选出最该应答的那一台</strong>（通常是离你最近 / 最合适的），其余的自动闭麦。你几乎察觉不到这个过程，但它每次都在跑。</p>
+    <div class="sym">CrossDeviceArbitration · CrossDeviceArbitrationAllowed</div>
+  </div>
+
+  <!-- 3 -->
+  <div class="item">
+    <div class="ih"><span class="ico">💡</span><h2>主动建议，挑了「时机」才弹</h2></div>
+    <div class="why">它会在对的时候提醒你「该出发了 / 要回这条消息吗」——但不会一直烦你。</div>
+    <p>主动建议不是随时乱弹，而是由<strong>触发器（ProactiveTrigger）</strong>按场景择机：识别到某类文本、某个 App 连接、某个时间地点，才浮出一条建议。<strong>「什么时候该出现」本身是被设计的</strong>——克制，是这套系统的一部分。</p>
+    <div class="sym">ProactiveTrigger · TriggerSourceTypeAppConnections · TriggerPhrase</div>
+  </div>
+
+  <!-- 4 -->
+  <div class="item">
+    <div class="ih"><span class="ico">⚠️</span><h2>危险操作，先问一句</h2></div>
+    <div class="why">「删除全部」「转账」「发出去」——这类做了就收不回的事，它不会闷头执行。</div>
+    <p>动作被分了级，<strong>破坏性 / 高风险操作（destructiveAction）</strong>会被标记，执行前<strong>强制确认</strong>。这就是为什么删东西、付钱、发消息这类，Siri 总会多问你一句——不是啰嗦，是给「收不回的事」上了一道闸。</p>
+    <div class="sym">destructiveAction · requiresConfirmation</div>
+  </div>
+
+  <!-- 5 -->
+  <div class="item">
+    <div class="ih"><span class="ico">❓</span><h2>没把握，就追问而不是瞎猜</h2></div>
+    <div class="why">听不太清、或有歧义时，它选择问你「是 A 还是 B」，而不是赌一个。</div>
+    <p>系统有<strong>置信度阈值（confidenceThreshold）</strong>：识别 / 理解的把握低于线，就触发<strong>追问或消歧（askToConfirm）</strong>，让你确认，而不是低置信度下硬执行。<strong>「知道自己不确定」并主动求证</strong>，比假装听懂更可靠。</p>
+    <div class="sym">confidenceThreshold · askToConfirm · disambiguation</div>
+  </div>
+
+  <!-- 6 -->
+  <div class="item">
+    <div class="ih"><span class="ico">🛡️</span><h2>输出前，过一道安全检查</h2></div>
+    <div class="why">模型再大也可能说错话，所以答案出口前还有一关。</div>
+    <p>有专门的<strong>内容安全检查器（ContentSafetyChecker）</strong>：模型生成的内容在呈现给你之前会过一遍护栏，敏感 / 不该说的内容被拦下。这是「上限交给模型、下限交给系统」哲学的又一处——<strong>模型负责聪明，护栏负责不出格</strong>。</p>
+    <div class="sym">ContentSafetyChecker · outputGuardrail</div>
+  </div>
+
+  <!-- 7 -->
+  <div class="item">
+    <div class="ih"><span class="ico">🗣️</span><h2>「念出来的」和「显示的」可以不一样</h2></div>
+    <div class="why">屏幕上是「H:63° L:52°」，Siri 念的却是「最高 63 度，最低 52 度」。</div>
+    <p>块可以同时带<strong>显示文本</strong>和<strong>朗读文本（spoken）</strong>——给眼睛看的简洁、给耳朵听的自然。再配上<strong>韵律控制（Prosody）</strong>调语气轻重停顿，所以它念长句不像机器读，该停顿停顿、该强调强调。<strong>同一份内容，为「看」和「听」分别优化。</strong></p>
+    <div class="sym">spoken · ProsodyControlConfig · speakableString</div>
+  </div>
+
+  <!-- 8 -->
+  <div class="item">
+    <div class="ih"><span class="ico">⌨️</span><h2>不再把你说的话「逐字打」在屏上</h2></div>
+    <div class="why">老 Siri 边听边显示识别文字，带错别字、还会反复回跳——看着就慌。新 Siri 默认不这么干了。</div>
+    <p>语音识别其实一直在出<strong>中间结果（interim）</strong>：你刚说半句，它先猜一版，下一秒可能推翻重写——这就是以前满屏文字乱跳的来源。新 Siri 在<strong>指令模式（CommandMode）下抑制这些中间结果</strong>，不把没定稿、会变的转写打给你看（<code>hideTranscript</code>），<strong>只在内部用、等定稿（<code>finalTranscript</code>）才提交</strong>。你看到的是「它在听」，而不是「它猜错又改」。</p>
+    <p>区别对待很关键：<strong>听写（Dictation）</strong>需要实时显示——你就是要那些字；而<strong>下指令</strong>时你要的是结果，中间转写反而是噪音。所以「不显示你说的话」不是缺功能，是<strong>故意的克制</strong>——把会回跳、带错字的过程藏起来，体验立刻干净。</p>
+    <p>「那我说错了呢？比如想发<strong>容</strong>淑英、它听成<strong>龙</strong>淑英？」——它不靠让你扫转写防错，而是<strong>在要紧处专门确认</strong>：发送前把<strong>收件人单拎出来核对</strong>（<code>ConfirmRecipient</code>，「发给【容淑英】？」），同音 / 相近名还会<strong>主动消歧</strong>（<code>homophone</code>，「是容还是荣？」），最后发出前再拦一道（<code>confirmationPrompt</code>）。<strong>把核对收窄到「发给谁」这一个关键点，而不是让你盯着会跳的全文自己抓错。</strong></p>
+    <div class="sym">hideTranscript · finalTranscript · CommandMode · ConfirmRecipient · homophone</div>
+  </div>
+
+  <p class="ask">这些都没人会专门夸——但少了任何一个，体验立刻变糙。</p>
+  <p>好产品的功夫，常常花在「你不会注意到」的地方。Siri 在这些小处，几乎每一个都立了一套专门的机制。</p>
+
+  <div class="foot">
+    数据来源 · SiriUnderstanding · CoreDuet · GenerativeFunctions · ConversationalAssistant（iOS 27 / macOS 26）<br>
+    关键符号 · BargeIn · CrossDeviceArbitration · ProactiveTrigger · destructiveAction · confidenceThreshold · ContentSafetyChecker · ProsodyControlConfig · hideTranscript · CommandMode<br>
+    方法 · 系统 dyld shared cache 导出符号 + swift demangle · 仅供研究学习
+  </div>
+
+</article>
+</body>
+</html>

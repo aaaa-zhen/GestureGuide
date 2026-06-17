@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Personal Context · 苹果怎么认识你、记住你、守护你</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<style>
+  :root{
+    --ink:#1a1a1a; --ink-soft:#3a3a3a; --ink-dim:#9a9a9a;
+    --line:#e6e6e6; --bg:#ffffff; --code-bg:#f6f6f6;
+    --good:#1d8a4e; --accent:#0a6cff; --warm:#c4702a; --hi:#b3261e;
+    --mono:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"PingFang SC","Segoe UI","Helvetica Neue","Microsoft YaHei",sans-serif;
+    --r-card:28px; --r-box:18px; --r-chip:12px; --r-tag:7px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:18px;line-height:1.9;
+    -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+  .doc{max-width:680px;margin:0 auto;padding:84px 28px 140px}
+
+  h1{font-size:34px;font-weight:700;line-height:1.35;letter-spacing:-.01em;margin-bottom:8px}
+  .sub{font-size:16px;color:var(--ink-dim);margin-bottom:56px;line-height:1.7}
+  h2{font-size:25px;font-weight:700;line-height:1.4;letter-spacing:-.01em;margin:72px 0 26px}
+  h3{font-size:19px;font-weight:700;margin:36px 0 16px}
+  p{margin-bottom:26px;color:var(--ink-soft)}
+  p:last-child{margin-bottom:0}
+  strong{font-weight:700;color:var(--ink)}
+  code{font-family:var(--mono);font-size:.82em;background:var(--code-bg);padding:2px 6px;
+    border-radius:var(--r-tag);color:var(--ink);white-space:nowrap}
+  .ask{font-size:20px;font-weight:600;color:var(--ink);margin-bottom:26px}
+
+  .note-box{background:#f7f7f7;border-radius:var(--r-box);padding:22px 24px;margin:0 0 48px}
+  .note-box p{font-size:15px;line-height:1.75;color:var(--ink-soft);margin-bottom:12px}
+  .note-box p:last-child{margin-bottom:0}
+  .note-box .nb-h{font-size:13px;font-weight:700;color:var(--ink);letter-spacing:.02em;margin-bottom:10px;display:block}
+
+  /* 全文导览 */
+  .toc{display:flex;flex-direction:column;border-top:1px solid var(--line);margin-top:6px}
+  .toc a{display:flex;gap:13px;align-items:baseline;padding:13px 4px;border-bottom:1px solid var(--line);text-decoration:none;color:var(--ink)}
+  .toc .tn{font-family:var(--mono);font-size:12px;color:var(--ink-dim);flex:0 0 20px}
+  .toc .tt{font-size:15.5px;font-weight:600}
+  .toc .td{font-size:13px;color:var(--ink-dim)}
+
+  ul,ol{margin:0 0 26px;padding-left:0;list-style:none}
+  li{margin-bottom:13px;color:var(--ink-soft);padding-left:26px;position:relative}
+  li::before{content:"";position:absolute;left:5px;top:13px;width:6px;height:6px;border-radius:50%;background:var(--ink-dim)}
+  li strong{display:inline}
+
+  hr{border:none;border-top:1px solid var(--line);margin:60px 0}
+  .act-label{font-family:var(--mono);font-size:13px;color:var(--ink-dim);letter-spacing:.04em;margin-top:64px;margin-bottom:0}
+  .act-label + h2{margin-top:8px}
+  blockquote{border-left:3px solid var(--ink);padding-left:22px;margin:0 0 26px}
+  blockquote p{margin:0;color:var(--ink-soft)}
+
+  /* 敏感度阶梯（统领图） */
+  .scale{margin:8px 0 14px}
+  .srow{display:flex;gap:13px;align-items:flex-start;border:1px solid var(--line);border-radius:var(--r-box);padding:15px 17px;margin-bottom:8px;background:#fff}
+  .srow .si{flex:0 0 auto;width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px}
+  .srow.x1 .si{background:#eef4ff} .srow.x2 .si{background:#eaf5ee} .srow.x3 .si{background:#f7f1e8} .srow.x4 .si{background:#fdeae6}
+  .srow .sb{flex:1}
+  .srow .st{font-size:15px;font-weight:700;color:var(--ink)}
+  .srow .sd{font-size:13px;color:var(--ink-dim);line-height:1.5;margin-top:3px}
+  .srow .sk{flex:0 0 auto;font-family:var(--mono);font-size:10px;font-weight:700;padding:3px 8px;border-radius:999px;align-self:center}
+  .srow.x1 .sk{background:#eef4ff;color:var(--accent)} .srow.x2 .sk{background:#eaf5ee;color:var(--good)}
+  .srow.x3 .sk{background:#f7f1e8;color:var(--warm)} .srow.x4 .sk{background:#fdeae6;color:var(--hi)}
+  .scale-cap{font-size:13px;color:var(--ink-dim);text-align:center;margin:2px 0 26px}
+
+  /* 三元组 */
+  .triple{display:flex;gap:8px;align-items:stretch;margin:8px 0 12px;flex-wrap:wrap}
+  .triple .tnode{flex:1;min-width:88px;border-radius:var(--r-box);padding:13px 11px;text-align:center;font-size:14px;font-weight:600}
+  .triple .s{background:#eef4ff;color:var(--accent)} .triple .p{background:#f7f3ea;color:var(--warm)} .triple .o{background:#eaf5ee;color:var(--good)}
+  .triple .tarrow{flex:0 0 auto;align-self:center;color:var(--ink-dim);font-family:var(--mono);font-size:11px}
+  .triple-cap{font-size:13px;color:var(--ink-dim);text-align:center;margin:0 0 26px}
+
+  /* 记忆框架行 */
+  .mem{margin:8px 0 26px}
+  .mrow{display:flex;gap:13px;align-items:flex-start;border:1px solid var(--line);border-radius:var(--r-box);padding:15px 17px;margin-bottom:8px;background:#fff}
+  .mrow .mi{flex:0 0 auto;width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;background:#f2f2f4}
+  .mrow .mt{font-size:15px;font-weight:700;color:var(--ink);display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+  .mrow .mt .sp{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--ink-dim)}
+  .mrow .md{font-size:13.5px;color:var(--ink-dim);line-height:1.55;margin-top:3px}
+
+  /* 两栏 */
+  .duo{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:8px 0 26px}
+  .duo .col{border:1px solid var(--line);border-radius:var(--r-box);padding:20px}
+  .duo .col.a{background:#f1faf4;border-color:#cfeada}
+  .duo .col.b{background:#fdf4f2;border-color:#f3d9d2}
+  .duo .col.lo{background:#eef4ff;border-color:#d4e2fb}
+  .duo .ch{font-size:15px;font-weight:700;margin-bottom:4px}
+  .duo .csub{font-size:11.5px;color:var(--ink-dim);margin-bottom:13px;font-family:var(--mono)}
+  .duo .col.a .ch{color:var(--good)} .duo .col.b .ch{color:#c4402a} .duo .col.lo .ch{color:var(--accent)}
+  .duo ul{margin:0} .duo li{font-size:13.5px;line-height:1.55;margin-bottom:9px;padding-left:17px}
+  .duo li::before{width:5px;height:5px;top:9px;left:3px}
+  .duo .col.a li::before{background:#7cc79c} .duo .col.b li::before{background:#dd9b90} .duo .col.lo li::before{background:#9bbef5}
+
+  /* 隔离示意 */
+  .iso{border:1px solid var(--line);border-radius:var(--r-card);padding:22px 18px;margin:8px 0 26px;background:#fbfbfb}
+  .iso .ring{border:2px dashed #e0b4ab;border-radius:var(--r-box);padding:15px;background:#fdf4f2;text-align:center}
+  .iso .ring .rt{font-size:12px;font-weight:700;color:var(--hi);margin-bottom:7px;font-family:var(--mono)}
+  .iso .ring .items{font-size:13px;color:var(--ink-soft);line-height:1.6}
+  .iso .barrier{text-align:center;font-family:var(--mono);font-size:11px;color:var(--ink-dim);margin:11px 0}
+  .iso .outside{font-size:13px;color:var(--ink-dim);text-align:center;line-height:1.5}
+
+  .terms{margin:0 0 26px}
+  .terms .row{display:flex;gap:16px;padding:13px 0;border-top:1px solid var(--line)}
+  .terms .row:last-child{border-bottom:1px solid var(--line)}
+  .terms .t{font-family:var(--mono);font-size:12.5px;font-weight:600;flex:0 0 160px;color:var(--ink);line-height:1.55;word-break:break-all}
+  .terms .d{font-size:14.5px;color:var(--ink-soft);line-height:1.55}
+
+  .footer{margin-top:80px;padding-top:28px;border-top:1px solid var(--line);
+    font-family:var(--mono);font-size:12px;color:var(--ink-dim);line-height:1.9}
+
+  @media(max-width:640px){
+    body{font-size:17px}
+    .doc{padding:56px 20px 100px}
+    h1{font-size:26px} h2{font-size:21px}
+    .duo{grid-template-columns:1fr}
+    .triple .tnode{flex:1 1 100%}
+    .triple .tarrow{transform:rotate(90deg)}
+    .terms .row{flex-direction:column;gap:4px}
+    .terms .t{flex:none}
+    li{overflow-wrap:anywhere} code{white-space:normal;overflow-wrap:anywhere}
+  }
+</style>
+</head>
+<body>
+<article class="doc">
+
+  <h1>Personal Context</h1>
+  <p class="sub">苹果怎么「认识你」——从此刻的处境，到关于你的画像，到你的习惯，再到你最敏感的身份资产 · 基于系统私有框架的符号分析</p>
+
+  <div class="note-box">
+    <span class="nb-h">一条主线：越往里，越是「你」，保护越重</span>
+    <p>「Siri 懂我」背后其实是一整套叫 <strong>Personal Context</strong> 的体系。它不是一团模糊的「记住」，而是<strong>四个由浅入深的圈层</strong>：最外是<strong>此刻</strong>（这一秒的处境），往里是<strong>你是谁</strong>（关于你的长期画像），再往里是<strong>你做过什么</strong>（习惯与记忆），最核心是<strong>你的身份资产</strong>（驾照、钥匙、银行卡）。</p>
+    <p>越往内层，数据越敏感，苹果的保护就越重——从「用完即弃」一路加码到「锁进独立安全芯片」。这篇顺着这条线讲清楚。</p>
+    <div class="toc">
+      <a href="#m1"><span class="tn">1</span><span><span class="tt">此刻 · 上下文</span><br><span class="td">临时的环境：现在是什么处境</span></span></a>
+      <a href="#m2"><span class="tn">2</span><span><span class="tt">你是谁 · 个人画像</span><br><span class="td">持久的图：里面有什么、从哪来、能干嘛</span></span></a>
+      <a href="#m3"><span class="tn">3</span><span><span class="tt">你做过什么 · 习惯与记忆</span><br><span class="td">行为引擎，会沉淀也会遗忘</span></span></a>
+      <a href="#m4"><span class="tn">4</span><span><span class="tt">它到底怎么学的</span><br><span class="td">统计、贝叶斯、深度学习与端侧训练</span></span></a>
+      <a href="#m5"><span class="tn">5</span><span><span class="tt">你的身份资产 · 凭证</span><br><span class="td">最敏感的「你」，锁进安全芯片</span></span></a>
+    </div>
+  </div>
+
+  <p>先看四层的敏感度阶梯——这是全文的骨架：</p>
+  <div class="scale">
+    <div class="srow x1"><div class="si">⏱️</div><div class="sb"><div class="st">此刻 · 上下文</div><div class="sd">屏幕 / 对话 / 时空，临时，用完即弃</div></div><div class="sk">最轻</div></div>
+    <div class="srow x2"><div class="si">🕸️</div><div class="sb"><div class="st">你是谁 · 画像</div><div class="sd">人 / 地点 / 关系连成的知识图，持久但本地</div></div><div class="sk">中</div></div>
+    <div class="srow x3"><div class="si">📊</div><div class="sb"><div class="st">你做过什么 · 记忆</div><div class="sd">行为统计 + 预测，带遗忘，本地</div></div><div class="sk">较重</div></div>
+    <div class="srow x4"><div class="si">🔒</div><div class="sb"><div class="st">你的资产 · 凭证</div><div class="sd">驾照 / 钥匙 / 银行卡，锁进独立安全芯片</div></div><div class="sk">最重</div></div>
+  </div>
+  <p class="scale-cap">从「用完即弃」到「硬件隔离」，保护逐层加码</p>
+
+  <hr>
+
+  <p class="act-label" id="m1">第一层 · 此刻</p>
+  <h2>上下文：临时的「环境」</h2>
+
+  <p>你正盯着一条订单消息，说一句：「<strong>把它存下来</strong>」。——光这句话根本没法办：「它」是什么？存到哪？</p>
+
+  <p>能办成，是因为 Siri 不只听你这句话，还<strong>看了你「此刻」的处境</strong>：屏幕上正开着哪条消息、你前一句说了什么、现在几点在哪。把这些<strong>当下的线索</strong>一起看，「它」才有了着落。这就是「上下文」——<strong>它专门补全你话里省掉的东西。</strong>线索来自三处：</p>
+
+  <div class="terms">
+    <div class="row"><div class="t">屏幕上有什么</div><div class="d">你正看着哪条消息、哪张照片、哪个航班——「它」「这个」指的就是屏上那个。<code>IntelligenceFlowContext</code>（识屏）</div></div>
+    <div class="row"><div class="t">刚刚聊了什么</div><div class="d">上一句的来龙去脉——「再来一个」「也发给他」要接上文才懂。</div></div>
+    <div class="row"><div class="t">此时此地</div><div class="d">几点、在哪、正开着哪个 App——「现在」「在这」「用这个」靠它补全。<code>ContextTypeAppInFocusBundleId</code></div></div>
+  </div>
+
+  <p>关键是：这些线索<strong>只描述「此刻」</strong>，主要服务于「<strong>这句话此刻在说什么</strong>」。它让 Siri 听懂当下——但它能记多久、记多少，是下面这个常见疑问。</p>
+
+  <h3>「我开了空调，聊了别的，再问『刚才让你干了啥』，它记得吗？」</h3>
+  <p>这要分两种「记得」，结论很不一样：</p>
+  <div class="terms">
+    <div class="row"><div class="t">✓ 接着上一轮</div><div class="d">「开空调」→「<strong>调高一度</strong>」→「<strong>把它关了</strong>」——它知道「它」是刚才那台空调。这是<strong>多轮对话</strong>，确凿支持（<code>ConversationHistory</code> / <code>previousResponse</code> / <code>Continuation</code>）。它很擅长<strong>接着说</strong>。</div></div>
+    <div class="row"><div class="t">⚠ 回头翻旧账</div><div class="d">中间<strong>聊了一堆不相关的</strong>，再回头问「刚才让你干了啥」要它复述——更可能<strong>记不全</strong>。对话记忆有<strong>窗口</strong>，插得越多、隔得越久，那一轮越容易掉出去。</div></div>
+  </div>
+  <p>有个反直觉的点：系统其实<strong>内部留着</strong>你执行过的动作（<code>actionHistory</code>），但那是给<strong>预测 / 建议 / 隐私设置</strong>用的（还能一键清除），<strong>没有证据</strong>表明做成了「对话里你一问、它念回一串你刚才的操作」这个功能。所以——</p>
+  <blockquote>
+    <p><strong>它擅长「接着说」，不擅长「翻旧账」。</strong>会话记忆偏短、偏「紧接刚才」；要它跨越一堆闲聊回溯老操作，多半已经不在窗口里了。「真正长期记得你」的，不是上下文，是下面的画像和行为记忆。</p>
+  </blockquote>
+
+  <hr>
+
+  <p class="act-label" id="m2">第二层 · 你是谁</p>
+  <h2>个人画像：持久的「关于你」</h2>
+
+  <p>第二层是<strong>跨场景、长期攒下来的「关于你」</strong>。它不随这一句话变，是一张持久的图——落地是 <code>CoreKnowledge</code>，一个本地知识库。</p>
+
+  <h3>① 里面到底有什么</h3>
+  <p>它不存散文本，而是把「关于你」拆成<strong>结构化的三元组</strong>（<code>CKTriple</code>，「主-谓-宾」），按一套本体（<code>CKOntology</code>）连成一张图。符号能证实它装这几类：</p>
+  <div class="terms">
+    <div class="row"><div class="t">人与关系</div><div class="d">你的联系人、家人、同事，以及他们之间的关系标签（<code>familyMember</code> / <code>relationshipLabel</code>）。</div></div>
+    <div class="row"><div class="t">地点</div><div class="d">家、公司、常去地（配合 CoreRoutine 的位置规律）。</div></div>
+    <div class="row"><div class="t">历史事件</div><div class="d">沉淀的时间线——你长期做过什么。<code>CKHistoricEvent</code></div></div>
+    <div class="row"><div class="t">App 交互</div><div class="d">你和各 App 怎么打交道、常用哪个干什么。<code>CKAppInteractionsContext</code></div></div>
+  </div>
+
+  <h3>② 这些信息从哪来</h3>
+  <p>不是它去翻你的数据，而是各 App / 系统<strong>主动「捐献」（<code>donate</code>）</strong>进来——这是苹果一以贯之的机制。你建个联系人、发条消息、到了某地，相关 App 把这件事 donate 给系统，沉淀进图（事件流落在 <code>Biome</code> 端侧存储）。<strong>全程本地</strong>（<code>localOnly</code>），不上传。</p>
+
+  <h3>③ 它不只是「存」，还会「替你提前想到」</h3>
+  <p>画像最值钱的，不是它<strong>记得</strong>什么，而是它能<strong>替你想到你没说的</strong>。这些事你从没专门告诉过它——是它从你的行为里<strong>自己算出来的</strong>：</p>
+  <ul>
+    <li>每天 18 点你都从同一栋楼出发回家——它<strong>没问过你家在哪</strong>，但「该走了，路上有点堵」会在 17:50 自己冒出来。</li>
+    <li>有个人你天天发消息、每张合照都有——它<strong>没被告知这是你伴侣</strong>，但 ta 的消息会优先提醒、来电不被勿扰拦。</li>
+    <li>你常去的那家咖啡馆、爱听的歌单——周末早上打开手机，它<strong>恰好摆在那</strong>。</li>
+  </ul>
+  <p>这背后是几套<strong>从行为里推断</strong>的机制（都是实挖的符号，不是它翻你资料）：</p>
+  <div class="terms">
+    <div class="row"><div class="t">推断关系</div><div class="d">不靠你填，从交互信号<strong>反推</strong>——<code>RelationshipInferenceAgent</code> / <code>FamilyInference</code>。「谁和你亲」是算出来的。</div></div>
+    <div class="row"><div class="t">算「谁重要」</div><div class="d"><code>ImportantPerson</code> + <code>ConfidenceLevel</code>——评出对你重要的人<strong>并带把握程度</strong>，自动当 VIP 对待（优先、不打扰拦截）。</div></div>
+    <div class="row"><div class="t">亲密度打分</div><div class="d"><code>AffinityScore</code>——给人、地点、照片<strong>量化「你有多在意」</strong>，越在意越往前排。</div></div>
+  </div>
+  <p>所以画像是<strong>活的、会自己长</strong>：你越用，它越懂你在意什么、越能在你开口前把对的东西递过来。「懂你」的真正价值，<strong>不在于它知道你的人际关系，而在于它替你把本该自己操心的事提前办了。</strong>（这套推断可关：<code>relationshipInferenceDisabled</code>。）</p>
+
+  <h3>④ 也让它「听懂你省略的话」</h3>
+  <p>③ 是<strong>主动</strong>替你想到；这张图还有个<strong>被动</strong>的用处——你说话时省掉的东西，它能查图补上：</p>
+  <ul>
+    <li><strong>把口语补成具体目标</strong>——「提醒我<strong>下班路上</strong>买菜」「导航回<strong>家</strong>」，「下班路上 / 家」是哪，要查图才知道。</li>
+    <li><strong>顺着关系多跳找</strong>——「给<strong>我老板的助理</strong>发邮件」，沿「你→老板→助理→邮箱」走两三跳（<code>CKPath</code>）。这种<strong>关键词搜索做不到</strong>。</li>
+    <li><strong>同名挑对人</strong>——通讯录里三个「张伟」，结合关系和你平时找谁，挑出最可能那个。</li>
+  </ul>
+
+  <h3>它最关键的设计：只切一小块</h3>
+  <p>这么私密的一张图，<strong>不会整张丢给模型</strong>。每次请求只用 <code>EntitySubgraphService</code> <strong>切出和当前相关的子图</strong>注入——问妈妈就取家庭那一小块，不暴露你的全部关系网。</p>
+
+  <blockquote>
+    <p>两层的本质区别就此清楚：<strong>上下文是「此刻的环境」，临时、用完即弃；画像是「持久的你」，跨场景沉淀、可推理。</strong>前者让 Siri 知道你在什么情境，后者让它知道你是谁。</p>
+  </blockquote>
+
+  <hr>
+
+  <p class="act-label" id="m3">第三层 · 你做过什么</p>
+  <h2>习惯与记忆：苹果早有一套「行为引擎」</h2>
+
+  <p>这一层最容易被想成「ChatGPT 那种记住你说过的话」。<strong>但苹果不是这么设计的。</strong>它的记忆<strong>不是为大模型新造的</strong>，而是复用了沉淀多年的行为学习引擎，几个框架各管一摊：</p>
+
+  <div class="mem">
+    <div class="mrow"><div class="mi">📊</div><div><div class="mt">CoreDuet <span class="sp">CDInteraction · AdviceEngine</span></div><div class="md">交互事件流：你和设备 / App 的每次交互记成一条 <code>CDInteraction</code>，建议引擎从历史推断「接下来你想做什么」。</div></div></div>
+    <div class="mrow"><div class="mi">📍</div><div><div class="mt">CoreRoutine <span class="sp">CRKLocation · PatternNetwork</span></div><div class="md">学地点与作息规律：家、公司、通勤、常去地。「我到家了」靠它。</div></div></div>
+    <div class="mrow"><div class="mi">🕸️</div><div><div class="mt">CoreKnowledge <span class="sp">CKHistoricEvent</span></div><div class="md">沉淀成历史事件时间线 + 三元组事实，持久（永久事件 vs 会过期的临时事件）。</div></div></div>
+    <div class="mrow"><div class="mi">🔮</div><div><div class="mt">CorePrediction <span class="sp">feedbackLearning</span></div><div class="md">变成预测 / 排序，每次交互再回灌（<code>donateInteraction</code> 按 <code>scoreWeight</code> 加权）形成闭环。</div></div></div>
+  </div>
+
+  <p>关键认知：<strong>苹果的「记忆」本质是「行为统计 + 预测」，不是「对话存档」。</strong>它记的是你<strong>做</strong>了什么、有什么<strong>规律</strong>，不是把你说的话原样存下来。</p>
+
+  <h3>它会「遗忘」——而且是刻意设计的</h3>
+  <p>符号里有明确的<strong>半衰期衰减</strong>：<code>decayAllAppActionLaunchSequencesWithHalfLifeInDays</code>、<code>decayConstant</code>。</p>
+  <blockquote>
+    <p>久不做的行为权重指数下降、被淡忘，最近的占主导。个人化<strong>跟着你近期习惯漂移</strong>，不被很久以前的一次行为绑死。记忆是一条<strong>带遗忘的滑动窗口</strong>，不是只进不出的账本——这也顺带是隐私（不无限堆积你的一切）。</p>
+  </blockquote>
+
+  <h3>「随口说一句，它记得吗？」</h3>
+  <p>按苹果的设计，<strong>主路径是隐式（从行为学），不是显式（听你陈述）。</strong>知识库<strong>有</strong> <code>assertFact</code>（断言一条事实）这个口子，但整套引擎的重心明显在<strong>观察行为</strong>。</p>
+  <blockquote>
+    <p>用苹果的设计语言说：它更像一个<strong>「行为分析师」</strong>——默默看你做什么、找规律、做预测；而不是一个<strong>「记笔记的秘书」</strong>把你口述逐条记下。「随口一句记成长期规则并主动应用」不是这套系统的主设计意图，接口层也看不到这条专门链路。</p>
+  </blockquote>
+
+  <hr>
+
+  <p class="act-label" id="m4">第三层 · 补充</p>
+  <h2>它到底用什么「学」</h2>
+
+  <p>顺带回答一个常见疑问：学你习惯，用的是深度学习吗？答案是<strong>混合，而且很克制</strong>——能用便宜的统计就不上神经网络：</p>
+  <div class="terms">
+    <div class="row"><div class="t">启发式 + 衰减</div><div class="d">最基础的「常用 / 最近」排序——计数 + 半衰期。<code>ActionPredictionHeuristics</code></div></div>
+    <div class="row"><div class="t">贝叶斯（经典 ML）</div><div class="d">行为预测打分用概率回归，<strong>不是</strong>深度学习。<code>BayesianProbitRegressor</code></div></div>
+    <div class="row"><div class="t">深度模型（CoreML）</div><div class="d">更复杂的建议 / 语义预测才上神经网络，跑在神经引擎。<code>CoreSuggestionsML</code> · <code>ANECompiler</code></div></div>
+  </div>
+  <p>而且它能在<strong>设备上做真训练</strong>，不只推理：<code>MLUpdateTask</code>（端侧再训练）、<code>PersonalizedModel</code>（个性化模型）、<code>FederatedLearning</code>（联邦学习——只上传聚合梯度、不传原始数据）。</p>
+  <blockquote>
+    <p>所以「学」也是分层的：<strong>便宜场景用统计 / 贝叶斯，复杂场景上深度学习</strong>；个性化靠端侧训练 + 联邦学习——<strong>越用越准，数据却不出端</strong>。苹果的风格：不为用深度学习而用，但该上的地方不含糊。</p>
+  </blockquote>
+
+  <hr>
+
+  <p class="act-label" id="m5">第四层 · 你的资产</p>
+  <h2>凭证：最敏感的「你」，锁进芯片</h2>
+
+  <p>最内层，是「你」的硬核部分——<strong>身份资产</strong>。「我的驾照在图库吗？」<strong>不在。</strong>你拍的照片才在图库；Wallet 里的数字驾照存在<strong>独立安全芯片</strong>里，iOS 和图库都碰不到。而且不止驾照，这一档装着一批最敏感的东西：</p>
+
+  <div class="duo">
+    <div class="col b">
+      <div class="ch">🔒 高安全 · Secure Element</div>
+      <div class="csub">驾照 · 身份证 · 车钥匙 · 门禁 · 银行卡 · 交通卡</div>
+      <ul>
+        <li>存进<strong>独立安全芯片</strong>，和 iOS / 图库物理隔离</li>
+        <li>带 NFC，碰一下付钱 / 开门 / 过闸</li>
+        <li>出示要 <strong>Face ID + 你同意</strong></li>
+        <li>带硬件认证密钥，可被验证为真</li>
+      </ul>
+    </div>
+    <div class="col lo">
+      <div class="ch">📄 普通 pass</div>
+      <div class="csub">登机牌 · 门票 · 会员卡 · 优惠券</div>
+      <ul>
+        <li>本质是<strong>带签名的文件</strong>（条码 / 二维码）</li>
+        <li>展示用，<strong>不进安全芯片</strong></li>
+        <li>扫一下就行，一般不要 Face ID</li>
+        <li>只是「可信地展示信息」，安全性低得多</li>
+      </ul>
+    </div>
+  </div>
+  <p>分界就一句：<strong>用来「证明 / 支付 / 开门」的进芯片，只用来「出示」的是文件。</strong></p>
+
+  <h3>高安全那档，怎么守</h3>
+  <div class="iso">
+    <div class="ring">
+      <div class="rt">SECURE ELEMENT（独立芯片）</div>
+      <div class="items">驾照 · 银行卡 · 车钥匙 · 交通卡<br>原始数据 + 硬件密钥</div>
+    </div>
+    <div class="barrier">▲ 硬件边界 · iOS 跨不过去 ▲</div>
+    <div class="outside">iOS / App / 图库 · 只能「请求」，拿不到原始数据</div>
+  </div>
+  <div class="terms">
+    <div class="row"><div class="t">物理隔离</div><div class="d">存在 Secure Element 的 applet 里（<code>appletIdentifier</code> / <code>CredentialStore</code>），系统拿不到原始数据。</div></div>
+    <div class="row"><div class="t">授权 + 选择性披露</div><div class="d">每次出示要 <code>userConsent</code> + Face ID；买酒只回答「<strong>是否满 21</strong>」（<code>ageOver</code>），不暴露生日 / 住址 / 证号。</div></div>
+    <div class="row"><div class="t">离线 + 丢失可控</div><div class="d"><code>expressMode</code> 没网甚至关机也能刷；<code>deviceLost</code> 可远程挂起，捡到的人也读不出。</div></div>
+  </div>
+  <p>对比图库：图库存的是驾照的<strong>一张照片</strong>（像素，谁进相册都能看、整张暴露）；Wallet 存的是<strong>一份凭证</strong>（带硬件密钥、要授权、可选择性披露的身份本身）。一个是像素，一个是身份。</p>
+
+  <hr>
+
+  <p>四层合起来，就是 Personal Context 的全貌——<strong>一条「越往里越是你、保护越重」的递进</strong>：</p>
+  <div class="terms">
+    <div class="row"><div class="t">此刻</div><div class="d">上下文——临时、用完即弃，解「这句话在说什么」。</div></div>
+    <div class="row"><div class="t">你是谁</div><div class="d">三元组画像——持久、本地、可推理，解「他 / 妈妈是谁」。</div></div>
+    <div class="row"><div class="t">你做过什么</div><div class="d">行为引擎——统计 + 预测、带遗忘、端侧学习，越用越懂。</div></div>
+    <div class="row"><div class="t">你的资产</div><div class="d">凭证——锁进安全芯片，授权 + 选择性披露，最高保护。</div></div>
+  </div>
+
+  <p class="ask">它不是「记住了你说的每句话」，而是把你的此刻、关系、习惯、身份，分层存好、按需取用、逐层加锁。</p>
+  <p>懂你靠的是结构化的图、带遗忘的学习和芯片级的隔离——不是一个无限长、什么都往里塞的档案。</p>
+
+  <div class="footer">
+    数据来源 · CoreKnowledge · CoreDuet · CoreRoutine · CorePrediction · IntelligenceFlowContext · PassKit · CredentialStore（iOS 27 / macOS 26）<br>
+    关键符号 · ConversationHistory · previousResponse · Continuation · actionHistory · CKTriple · CKOntology · CKPath · RelationshipInferenceAgent · ImportantPersonConfidenceLevel · AffinityScore · donate · EntitySubgraphService · CRKLocation · decayWithHalfLifeInDays · localOnly<br>
+    方法 · 系统 dyld shared cache 导出符号 + cstring 提取 + swift demangle<br>
+    仅供研究学习 · 符号反映接口结构；标注「不确定」处为接口层无法证实的产品逻辑
+  </div>
+
+</article>
+</body>
+</html>

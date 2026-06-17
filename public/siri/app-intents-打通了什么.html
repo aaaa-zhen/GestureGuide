@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Siri 背后的一整套机器 · 苹果端侧 AI 的系统架构</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<style>
+  :root{
+    --ink:#1a1a1a; --ink-soft:#3a3a3a; --ink-dim:#9a9a9a;
+    --line:#e6e6e6; --bg:#ffffff; --code-bg:#f6f6f6;
+    --good:#1d8a4e; --slow:#c4402a; --accent:#0a6cff;
+    --mono:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"PingFang SC","Segoe UI","Helvetica Neue","Microsoft YaHei",sans-serif;
+    --r-card:28px; --r-box:18px; --r-chip:12px; --r-tag:7px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:18px;line-height:1.9;
+    -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+  .doc{max-width:680px;margin:0 auto;padding:84px 28px 140px}
+
+  h1{font-size:34px;font-weight:700;line-height:1.35;letter-spacing:-.01em;margin-bottom:8px}
+  .sub{font-size:16px;color:var(--ink-dim);margin-bottom:56px;line-height:1.7}
+  h2{font-size:25px;font-weight:700;line-height:1.4;letter-spacing:-.01em;margin:72px 0 26px}
+  h3{font-size:19px;font-weight:700;margin:36px 0 16px}
+  p{margin-bottom:26px;color:var(--ink-soft)}
+  p:last-child{margin-bottom:0}
+  strong{font-weight:700;color:var(--ink)}
+  code{font-family:var(--mono);font-size:.84em;background:var(--code-bg);padding:2px 6px;
+    border-radius:var(--r-tag);color:var(--ink);white-space:nowrap}
+  .ask{font-size:20px;font-weight:600;color:var(--ink);margin-bottom:26px}
+
+  .note-box{background:#f7f7f7;border-radius:var(--r-box);padding:22px 24px;margin:0 0 56px}
+  .note-box p{font-size:15px;line-height:1.75;color:var(--ink-soft);margin-bottom:12px}
+  .note-box p:last-child{margin-bottom:0}
+  .note-box .nb-h{font-size:13px;font-weight:700;color:var(--ink);letter-spacing:.02em;margin-bottom:10px;display:block}
+
+  /* 全文导览 */
+  .toc{display:flex;flex-direction:column;gap:0;margin:0 0 26px;border-top:1px solid var(--line)}
+  .toc a{display:flex;gap:14px;align-items:baseline;padding:15px 4px;border-bottom:1px solid var(--line);
+    text-decoration:none;color:var(--ink)}
+  .toc .tn{font-family:var(--mono);font-size:13px;color:var(--ink-dim);flex:0 0 24px}
+  .toc .tt{font-size:16px;font-weight:600}
+  .toc .td{font-size:13.5px;color:var(--ink-dim)}
+
+  ul,ol{margin:0 0 26px;padding-left:0;list-style:none}
+  li{margin-bottom:14px;color:var(--ink-soft);padding-left:28px;position:relative}
+  li::before{content:"";position:absolute;left:6px;top:13px;width:6px;height:6px;border-radius:50%;background:var(--ink-dim)}
+  li strong{display:inline}
+
+  hr{border:none;border-top:1px solid var(--line);margin:64px 0}
+  .act-label{font-family:var(--mono);font-size:13px;color:var(--ink-dim);letter-spacing:.04em;margin-top:72px;margin-bottom:0}
+  .act-label + h2{margin-top:8px}
+
+  blockquote{border-left:3px solid var(--ink);padding-left:22px;margin:0 0 26px}
+  blockquote p{margin:0;color:var(--ink-soft)}
+
+  /* 端/云 两栏能力 */
+  .duo{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:8px 0 26px}
+  .duo .col{border:1px solid var(--line);border-radius:var(--r-box);padding:20px}
+  .duo .col.dev{background:#f1faf4;border-color:#cfeada}
+  .duo .col.pcc{background:#eef4ff;border-color:#d4e2fb}
+  .duo .ch{font-size:15px;font-weight:700;margin-bottom:4px;display:flex;align-items:center;gap:7px}
+  .duo .csub{font-size:12px;color:var(--ink-dim);margin-bottom:14px;font-family:var(--mono)}
+  .duo .col.dev .ch{color:var(--good)} .duo .col.pcc .ch{color:var(--accent)}
+  .duo ul{margin:0} .duo li{font-size:14px;line-height:1.55;margin-bottom:10px;padding-left:18px}
+  .duo li::before{width:5px;height:5px;top:9px;left:3px}
+  .duo .col.dev li::before{background:#7cc79c} .duo .col.pcc li::before{background:#9bbef5}
+
+  /* 路由流向 */
+  .route{border:1px solid var(--line);border-radius:var(--r-card);padding:24px 20px;margin:8px 0 26px;background:#fbfbfb}
+  .route .step{display:flex;gap:12px;align-items:flex-start;margin-bottom:14px}
+  .route .step:last-child{margin-bottom:0}
+  .route .rn{flex:0 0 auto;width:24px;height:24px;border-radius:50%;background:var(--ink);color:#fff;
+    font-family:var(--mono);font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center}
+  .route .rb{flex:1;font-size:14px;line-height:1.55;color:var(--ink-soft)}
+  .route .rb b{color:var(--ink)}
+
+  /* App 打通清单 */
+  .apps{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:8px 0 26px}
+  .app{border:1px solid var(--line);border-radius:var(--r-box);padding:18px;background:#fbfbfb}
+  .app .an{font-size:16px;font-weight:700;color:var(--ink);margin-bottom:4px;display:flex;align-items:center;gap:8px}
+  .app .lvl{font-family:var(--mono);font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:999px}
+  .app .lvl.deep{background:#e7f3ec;color:var(--good)}
+  .app .lvl.mid{background:#eef4ff;color:var(--accent)}
+  .app .lvl.basic{background:#f0f0f2;color:var(--ink-dim)}
+  .app .av{font-size:13px;color:var(--ink-dim);line-height:1.55}
+  .app .av code{font-size:11.5px;background:#fff}
+
+  /* 深度阶梯 / 通用 rung */
+  .depth{margin:8px 0 26px}
+  .drow{display:flex;gap:14px;align-items:flex-start;border:1px solid var(--line);border-radius:var(--r-box);padding:16px 18px;margin-bottom:10px;background:#fff}
+  .drow .dn{flex:0 0 auto;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+    font-family:var(--mono);font-size:13px;font-weight:700;color:#fff;background:var(--ink)}
+  .drow .db{flex:1}
+  .drow .dt{font-size:15.5px;font-weight:700;color:var(--ink);margin-bottom:3px}
+  .drow .dd{font-size:13.5px;color:var(--ink-dim);line-height:1.55}
+  .drow .dd code{font-size:.85em}
+
+  /* 流向图（第三方接入 / 执行回端） */
+  .flow{border:1px solid var(--line);border-radius:var(--r-card);padding:24px 18px;margin:8px 0 26px;background:#fbfbfb;
+    display:flex;align-items:stretch;gap:10px}
+  .flow .node{flex:1;text-align:center;border-radius:var(--r-box);padding:15px 9px;display:flex;flex-direction:column;gap:6px;justify-content:center}
+  .flow .node.a{background:#fff;border:1px solid var(--line)}
+  .flow .node.b{background:#eef4ff;border:1px solid #d4e2fb}
+  .flow .node.c{background:#f1faf4;border:1px solid #cfeada}
+  .flow .node .t{font-size:13px;font-weight:700;color:var(--ink)}
+  .flow .node .d{font-size:11px;color:var(--ink-dim);line-height:1.45}
+  .flow .arrow{flex:0 0 auto;align-self:center;font-size:17px;color:var(--ink)}
+
+  .terms{margin:0 0 26px}
+  .terms .row{display:flex;gap:16px;padding:14px 0;border-top:1px solid var(--line)}
+  .terms .row:last-child{border-bottom:1px solid var(--line)}
+  .terms .t{font-family:var(--mono);font-size:13px;font-weight:600;flex:0 0 130px;color:var(--ink);line-height:1.6;word-break:break-all}
+  .terms .d{font-size:15px;color:var(--ink-soft);line-height:1.6}
+
+  .footer{margin-top:80px;padding-top:28px;border-top:1px solid var(--line);
+    font-family:var(--mono);font-size:12.5px;color:var(--ink-dim);line-height:1.9}
+
+  @media(max-width:640px){
+    body{font-size:17px}
+    .doc{padding:56px 20px 100px}
+    h1{font-size:28px} h2{font-size:22px}
+    .duo,.apps{grid-template-columns:1fr}
+    .flow{flex-direction:column}
+    .flow .arrow{transform:rotate(90deg)}
+    .terms .row{flex-direction:column;gap:4px}
+    .terms .t{flex:none}
+    li{overflow-wrap:anywhere} code{white-space:normal;overflow-wrap:anywhere}
+  }
+</style>
+</head>
+<body>
+<article class="doc">
+
+  <h1>Siri 背后的一整套机器</h1>
+  <p class="sub">模型怎么分端云、第一方应用开放了什么、第三方怎么接、十万条数据怎么不崩 · 基于系统私有框架的符号分析</p>
+
+  <div class="note-box">
+    <span class="nb-h">这篇怎么读</span>
+    <p>「苹果 AI」不是一个模型，是<strong>一条流水线</strong>：你说一句话，先决定用端侧还是云端的模型去想，想出「要做什么」后，去调本地应用开放的标准动作，第三方设备和 App 也从同一个口子接进来；而当某个应用的数据量很大（比如一万张照片），还得有专门的办法保证不卡死；要是你一口气说了好几件事，它还得拆开排好序。</p>
+    <p>本文顺着这条链，一节一节拆开看它到底怎么搭的。</p>
+    <div class="toc">
+      <a href="#m1"><span class="tn">1</span><span><span class="tt">模型：端 vs 云</span><br><span class="td">什么走本地、什么上云，各能做什么</span></span></a>
+      <a href="#m2"><span class="tn">2</span><span><span class="tt">第一方应用开放了什么</span><br><span class="td">App Intents 打通清单 + 四级深度</span></span></a>
+      <a href="#m3"><span class="tn">3</span><span><span class="tt">第三方怎么接入</span><br><span class="td">设备和 App 如何被统一掌管</span></span></a>
+      <a href="#m4"><span class="tn">4</span><span><span class="tt">数据量大了怎么不崩</span><br><span class="td">一万张照片里找一张的工程</span></span></a>
+      <a href="#m5"><span class="tn">5</span><span><span class="tt">一句话里好几件事</span><br><span class="td">看天气、看航班、改图——怎么排</span></span></a>
+    </div>
+  </div>
+
+  <hr>
+
+  <p class="act-label" id="m1">第一节</p>
+  <h2>模型：什么走本地，什么上云</h2>
+
+  <p>苹果的模型是<strong>端 + 云两套</strong>，会自动路由（符号里能看到成对的 <code>AnswerSynthesisServer</code> 和 <code>AnswerSynthesis…PrivateCloudCompute</code>，按 <code>deviceCapability</code> 判定走哪条）。两套各管一摊：</p>
+
+  <div class="duo">
+    <div class="col dev">
+      <div class="ch">🟢 端侧小模型</div>
+      <div class="csub">on-device · 默认</div>
+      <ul>
+        <li>日常意图理解、改写、校对</li>
+        <li>短问答、通知摘要</li>
+        <li>对屏幕 / 数据的快速操作</li>
+        <li><strong>最快、最私密</strong>，离线也能用</li>
+      </ul>
+    </div>
+    <div class="col pcc">
+      <div class="ch">🔵 Private Cloud Compute</div>
+      <div class="csub">苹果保密云 · 升级时</div>
+      <ul>
+        <li>复杂推理、长文总结</li>
+        <li>更准的图片分析、长上下文</li>
+        <li>端侧 <code>UnsupportedOnDevice</code> 的请求</li>
+        <li>跑在苹果自营、可验证隐私的云上</li>
+      </ul>
+    </div>
+  </div>
+
+  <p>怎么决定走哪条——不是模型临场拍脑袋，是<strong>按设备能力 + 任务复杂度预先判定</strong>（<code>deviceCapabilityFlags</code> / <code>HWCapableSiriON</code> / flag <code>pccAsDefault</code>）：</p>
+
+  <div class="route">
+    <div class="step"><span class="rn">1</span><span class="rb">请求进来，先看<b>设备够不够、任务复不复杂</b>。</span></div>
+    <div class="step"><span class="rn">2</span><span class="rb">简单 / 隐私敏感 / 设备够强 → <b>就地用端侧模型</b>。</span></div>
+    <div class="step"><span class="rn">3</span><span class="rb">端侧扛不住（报 <code>UnsupportedOnDevice</code>）→ <b>升级到 Private Cloud Compute</b>。</span></div>
+  </div>
+
+  <h3>但有个最容易搞混的点</h3>
+  <blockquote>
+    <p><strong>上云，只让它「想」得更聪明，不让它「做」得更多。</strong>云端模型更大，所以分析更准、总结更好——但它能执行的动作，还是后面要讲的那张固定清单。云端不会凭空多出一个新能力。「智能」靠上云提升，「能做什么」是另一层决定的。</p>
+  </blockquote>
+
+  <h3>那云能直接改本地的应用吗？——不能</h3>
+  <p>这是关键的隐私边界。从符号看，<strong>云端产出的是一份「执行计划」（<code>executionPlan</code>），不是动手本身</strong>。真正去调用 App、改数据的，是<strong>端侧的执行器 <code>ExecutorAppIntent</code></strong>——它在本地跑，所以才会报「蓝牙没开」「定位没开」「实体没找到」这种<strong>只有本地设备才知道</strong>的错误。</p>
+
+  <div class="flow">
+    <div class="node b"><div class="t">云端模型</div><div class="d">想出「该做什么」<br>executionPlan</div></div>
+    <div class="arrow">→</div>
+    <div class="node a"><div class="t">计划回到端侧</div><div class="d">不带着你的数据上云执行</div></div>
+    <div class="arrow">→</div>
+    <div class="node c"><div class="t">端侧执行器</div><div class="d">ExecutorAppIntent<br>本地真正动手</div></div>
+  </div>
+
+  <p>所以：<strong>云负责「想」，端负责「做」。</strong>动作永远落在你设备本地执行，云端拿到的只是问题，不是你应用的控制权。</p>
+
+  <hr>
+
+  <p class="act-label" id="m2">第二节</p>
+  <h2>第一方应用，开放了什么</h2>
+
+  <p>模型想好「要做什么」之后，靠 <strong>App Intents</strong> 去调应用——每个动作都得是应用按苹果预设的标准「动作域」<strong>主动暴露</strong>的。下面是从系统里实际扒出来的、各应用打通的程度：</p>
+
+  <div class="apps">
+    <div class="app"><div class="an">📷 照片 <span class="lvl deep">深</span></div><div class="av">建/删/改相册、加移照片、搜索、<strong>编辑（带连续数值）</strong>：裁剪/拉直/曝光/饱和/暖色/景深/滤镜、清理路人、收藏回忆、识别人物。<code>photos.createAlbum · updateAsset · deleteAssets</code></div></div>
+    <div class="app"><div class="an">📝 备忘录 <span class="lvl deep">深</span></div><div class="av">新建/删除/搜索/查找、加附件、改手写内容；外加总结、改写。<code>notes.createNote · delete · find · updateHandWriting</code></div></div>
+    <div class="app"><div class="an">✅ 提醒事项 <span class="lvl deep">深</span></div><div class="av">建/改/删提醒、建清单/分区/标签、加任务、搜索——颗粒度很细。<code>reminders.createReminder · createList · createTag · addTask · updateReminder</code></div></div>
+    <div class="app"><div class="an">🏠 家庭 <span class="lvl deep">深</span></div><div class="av">开关配件、运行场景、自动化；亮度/色温/温度等连续特征。<code>SetAccessory · ToggleAccessory</code></div></div>
+    <div class="app"><div class="an">✉️ 邮件 <span class="lvl mid">中</span></div><div class="av">发送、回复（归档/删除）、搜索、按发件人。<code>mail.sendMail · reply · search</code></div></div>
+    <div class="app"><div class="an">💬 信息 <span class="lvl mid">中</span></div><div class="av">发送/回复/搜索、发给联系人。<code>messages.send · reply · sendingMessageToContact</code></div></div>
+    <div class="app"><div class="an">📅 日历 <span class="lvl mid">中</span></div><div class="av">建/改/删事件、显示。<code>calendar.createEvent · updateEvent · deleteEvents</code></div></div>
+    <div class="app"><div class="an">📞 电话 <span class="lvl mid">中</span></div><div class="av">打电话、发起会议通话、紧急呼叫。<code>phone.startPhoneCall · createConferenceCall · startEmergencyCall</code></div></div>
+    <div class="app"><div class="an">🎵 音乐 / 播客 / TV <span class="lvl mid">中</span></div><div class="av">播放、队列、播放列表、搜索、章节。<code>music.playback · playlist · search</code> · <code>podcasts.playback</code> · <code>tv.search</code></div></div>
+    <div class="app"><div class="an">🧭 地图 <span class="lvl mid">中</span></div><div class="av">开始导航、横幅显示。<code>maps.startNavigation · showBanners</code></div></div>
+    <div class="app"><div class="an">🌐 浏览器 <span class="lvl mid">中</span></div><div class="av">开/关标签、书签、搜网页、用户上下文。<code>browser.createUserContext · bookmark</code></div></div>
+    <div class="app"><div class="an">🏃 健身 / 📁 文件 / 📷 相机 <span class="lvl basic">基础</span></div><div class="av">开始锻炼、文件书签、相机开启等单点动作。<code>fitness.startWorkout · files.bookmarks</code></div></div>
+  </div>
+
+  <p>这套覆盖远比一般人想的广，而且<strong>颗粒度不浅</strong>——提醒事项连「建标签 / 建分区」都有独立动作，照片连修图滑块都暴露成带数值的动作。</p>
+
+  <p><strong>但「办公文档」这类要泼盆冷水。</strong>常以为 word / 表格 / 演示文稿也有一套标准动作域——可在符号里<strong>找不到它们干净的动作 schema</strong>（搜到的 <code>document.*</code> 其实是网页 DOM 接口，不是 Siri 动作）。<strong>真正确凿的文档类动作只有 Freeform</strong>（<code>FreeformCreateBoardIntent</code> 建白板）。所以「文档全打通了」更像想当然——<strong>有标准域的才打通，没有的就是没有，这正好印证「应用只能往苹果预设的域里填、填不出域外的动作」。</strong></p>
+
+  <h3>同样叫「打通」，深浅差很多</h3>
+  <p>从浅到深四级，决定一个应用能被 AI 用到什么程度：</p>
+  <div class="depth">
+    <div class="drow"><div class="dn">1</div><div class="db"><div class="dt">能打开</div><div class="dd">把应用拉起来、跳到某页。最浅，几乎都有。</div></div></div>
+    <div class="drow"><div class="dn">2</div><div class="db"><div class="dt">能读 · 能搜</div><div class="dd">内容是结构化实体（<code>NoteEntity</code>/<code>AssetEntity</code>），能检索、能引用「这条」。</div></div></div>
+    <div class="drow"><div class="dn">3</div><div class="db"><div class="dt">能改 · 能执行动作</div><div class="dd">建相册、发邮件、开灯——离散操作。多数「中」级到这。</div></div></div>
+    <div class="drow"><div class="dn">4</div><div class="db"><div class="dt">能调连续参数</div><div class="dd">最深。曝光/饱和、亮度/色温——滑块级数值控制（符号里就是 <code>adjustment value</code>）。照片、家庭到了这。</div></div></div>
+  </div>
+  <p>照片能到第 4 级，是因为苹果把<strong>每一个修图维度</strong>都单独做成了带数值的 intent。不是「AI 看懂了照片」，是「应用把调色板每个旋钮都接了出来」。</p>
+
+  <hr>
+
+  <p class="act-label" id="m3">第三节</p>
+  <h2>第三方，怎么接进来</h2>
+
+  <p>上面都是苹果自己的应用。第三方设备和 App 能被 Siri 掌管吗？能——但方式很说明问题：<strong>不是 Siri 去对接你，是你来对接苹果的标准。</strong></p>
+
+  <div class="flow">
+    <div class="node a"><div class="t">第三方</div><div class="d">硬件 / App / 你的流程</div></div>
+    <div class="arrow">→</div>
+    <div class="node b"><div class="t">三选一接入</div><div class="d">HomeKit / App Intents<br>/ App Shortcuts</div></div>
+    <div class="arrow">→</div>
+    <div class="node c"><div class="t">Siri 能调</div><div class="d">Entity / 标准动作<br>/ 自定义短语</div></div>
+  </div>
+
+  <p>不只智能家居——第三方接入<strong>其实有三条路</strong>，从「最贴标准」到「最自由」：</p>
+
+  <h3>① 智能硬件 → 走 Matter / HomeKit</h3>
+  <p>第三方设备（灯、锁、传感器）接入 Matter / HomeKit，就成了一个 <code>AccessoryEntity</code>。Siri 不区分一方三方，统一按 <code>home.*</code> 标准动作调（开关、亮度、色温、场景）。<strong>但只能做 HomeKit 抽象出来的特征</strong>——灯就是「开关 + 亮度 + 色温」，别的花样够不着。</p>
+
+  <h3>② 第三方 App → 实现 App Intents，对上标准动作域</h3>
+  <p>普通 App（不是硬件）实现 App Intents，把自己的能力声明成 <code>AppEntity</code> + 动作。<strong>但前提是「对上苹果预设的 AssistantSchema 域」</strong>——你是个记账 App，能对上「创建一条记录」这种标准动作就能被 Siri 直接调；<strong>对不上标准域的独门功能，Siri 调不到。</strong>这条最贴标准、也最受限。</p>
+
+  <h3>③ App Shortcuts / 快捷指令 → 自定义短语 + 模型帮你生成</h3>
+  <p>这条最自由，也是你说的「场景助手」那条线。基础是 <strong>App Shortcuts</strong>：App 给自己的动作配<strong>自定义触发短语</strong>（<code>AppShortcutPhrase</code>）——「嘿 Siri，开始我的冥想」直接触发某个冥想 App，<strong>不用对上任何苹果预设域</strong>。在它之上，快捷指令（Shortcuts）能<strong>把多个 App 的动作串成工作流</strong>（<code>WFAction</code> 链）+ <strong>自动化触发</strong>（<code>AutomationTrigger</code>：到家 / 某时间 / 碰 NFC / 进专注模式）。</p>
+
+  <h3>关键变化：现在是「模型帮你 vibe 出快捷指令」</h3>
+  <p>过去快捷指令的痛点是<strong>得自己手动拼积木</strong>，门槛高。Apple Intelligence 把这条彻底改了——符号里能看到 <code>ComposeWorkflow</code> / <code>WorkflowGeneration</code>：</p>
+  <ul>
+    <li><strong>自然语言生成整条工作流。</strong>你描述「想要什么」，模型<strong>生成</strong>对应的快捷指令（<code>generateShortcutRepresentation</code> / <code>WorkflowGenerationItem</code>）——不再是你一块块拖。</li>
+    <li><strong>工作流里能直接塞一步「调模型」。</strong><code>UseModelAction</code> / <code>IntelligenceAction</code>：在一条快捷指令中间插入「让模型处理这段」——比如「读取邮件 → <strong>让模型总结</strong> → 发给我」。模型成了工作流里的一个可调动作。</li>
+  </ul>
+  <p>所以这条路<strong>不再「脚本化、费手」</strong>：你用一句话描述意图，模型 vibe 出快捷指令；流程里还能随时让模型帮忙。它把「自由度」和「省心」第一次拉到了一起。</p>
+
+  <blockquote>
+    <p>三条路连起来看，是一道<strong>逐渐放开的光谱</strong>：① ② 走标准域，被 Siri 智能调度、最省心，但只能做标准里有的；③ 快捷指令最自由、能自定义短语 + 跨 App 串联，<strong>而且现在能让模型替你生成、还能在流程里调模型</strong>——自由和省心不再二选一。这是苹果在「封闭标准」之外，给第三方留的、而且正在变聪明的那条路。</p>
+  </blockquote>
+
+  <hr>
+
+  <p class="act-label" id="m4">第四节</p>
+  <h2>数据量大了，怎么不崩</h2>
+
+  <p class="ask">手机里有一万张照片，你说「找出很多年前在海边那张」——它真能找到。怎么做到的？</p>
+
+  <p>注意：<strong>「找到那张」和「裁剪/存相册」是两件事</strong>。后者是上面的 App Intents（执行）；前者是<strong>检索</strong>，是另一套专门对付规模的机器。它的核心思路是——<strong>不在你提问时翻一万张，而是平时就把每张照片转成一个数值向量、建好索引。</strong></p>
+
+  <div class="depth">
+    <div class="drow"><div class="dn">1</div><div class="db"><div class="dt">平时：后台逐张「向量化」</div><div class="dd">守护进程 <code>photoanalysisd</code> 在充电/空闲时把全库跑一遍，用 CLIP 给每张图生成语义向量（<code>CLIPBasedAssetSummarizer</code>），落盘成索引（<code>embeddingStoreDirectoryForPhotoLibrary</code>）。照片越旧，越早被索引好。</div></div></div>
+    <div class="drow"><div class="dn">2</div><div class="db"><div class="dt">用时：查索引，不查照片</div><div class="dd">你的描述也转成向量，在索引里做<b>数学最近邻匹配</b>（<code>cosineSimilarity</code>）。和照片新旧、库多大无关——查的是现成索引，不是现场翻图。</div></div></div>
+  </div>
+
+  <p>这也顺带绕开了「大模型幻觉」：<strong>大模型不参与「找」</strong>。它最多把你的话转成向量，挑哪张是<strong>确定性的向量计算</strong>——同样输入永远同样输出，不会「这次找得到、下次找不到」。存的是稳定的数值向量，不是大模型每次都可能写不一样的文字标注。</p>
+
+  <h3>那一万张、十万张，怎么扛住？</h3>
+  <p>规模问题就两块——<strong>存得下</strong>、<strong>搜得快</strong>。苹果用的是工业级向量检索的标准三招，符号里都有对应件：</p>
+
+  <div class="terms">
+    <div class="row"><div class="t">存得下</div><div class="d"><strong>量化压缩</strong>：不存每张图完整向量，用「码本里的质心」近似表示（<code>CLIPCentroidCodebook</code> / <code>CLIPClusterer</code>）。十万张也压得很小。</div></div>
+    <div class="row"><div class="t">搜得快</div><div class="d"><strong>聚类剪枝</strong>：先选相关的几个簇，只在簇内找，不全扫（<code>CLIPElector</code> / <code>CLIPElectorCluster</code>）——这就是近似最近邻，库再大也接近常数时间。</div></div>
+    <div class="row"><div class="t">不卡死</div><div class="d"><strong>后台分阶段 + 让路</strong>：充电/空闲才跑，前台一来就退，扛不住就降级丢弃（<code>analysisStage</code> / <code>backgroundProcessingIsAllowed</code> / <code>lowPower</code>）。</div></div>
+  </div>
+
+  <p>核心思想一句话：<strong>用「近似」换「规模」。</strong>它不追求在十万张里找到数学上绝对最近的那张，而是先分桶、只在最相关的桶里找近似最优——牺牲一点点精度，换来「库再大，搜索也几乎一样快」。这就是为什么你十万张照片，搜起来和一千张感觉没差别。</p>
+
+  <hr>
+
+  <p class="act-label" id="m5">第五节</p>
+  <h2>一句话里好几件事，怎么排</h2>
+
+  <p class="ask">「看下天气、查我下午的航班、把刚拍那张照片调亮存进相册」——一口气三件事，它怎么办？</p>
+
+  <p>这种叫<strong>复合请求</strong>（符号里就是 <code>compoundRequest</code>）。系统不会把整句囫囵丢给模型硬答，而是先<strong>拆成一个个步骤</strong>（<code>planStep</code> / <code>ExecutionStep</code>），每步对应一次工具调用，再排出执行顺序。排序的依据，是步骤之间<strong>有没有数据依赖</strong>（<code>dependencyGraph</code>）：</p>
+
+  <div class="depth">
+    <div class="drow"><div class="dn">1</div><div class="db"><div class="dt">拆解</div><div class="dd">一句话 → 三个步骤：查天气 / 查航班 / 调图存相册。每步绑定一个 App Intent + 参数。</div></div></div>
+    <div class="drow"><div class="dn">2</div><div class="db"><div class="dt">看依赖，定并行还是串行</div><div class="dd">三件事互不依赖 → <b>并行</b>同时发（<code>parallelToolCalling</code>）；若「把<i>航班所在城市</i>的天气查出来」这种后一步要用前一步结果 → <b>串行</b>等结果（<code>ToolExecutionMode.sequential</code>）。</div></div></div>
+    <div class="drow"><div class="dn">3</div><div class="db"><div class="dt">汇总</div><div class="dd">各步结果收回来，合成一个回答 / 一组卡片呈现（接回生成式 UI 那套）。</div></div></div>
+  </div>
+
+  <p>所以「看天气、看航班、改图」这种没关联的，<strong>三件事并行发出去、几乎同时回来</strong>；而「查 A 城天气，然后订 A 城的酒店」这种<strong>前后有依赖的，自动串起来按序执行</strong>。并行还是串行，由依赖图决定，不靠模型每次自己琢磨。</p>
+
+  <blockquote>
+    <p>注意：能这么编排，前提还是<strong>每一步都得是 App Intents 清单里有的标准动作</strong>。多任务调度解决的是「怎么排这几件事」，不是「能多做几件清单外的事」——范围依然被前面那张动作清单框死。</p>
+  </blockquote>
+
+  <hr>
+
+  <p>把五节连起来看，是同一套思路在反复出现：</p>
+  <div class="terms">
+    <div class="row"><div class="t">模型</div><div class="d">端云分工，云只「想」、端才「做」——能力边界与模型大小解耦。</div></div>
+    <div class="row"><div class="t">应用</div><div class="d">能力很深（深到调滑块），但锁在预设动作域内。</div></div>
+    <div class="row"><div class="t">第三方</div><div class="d">统一成 Entity 接入，迁就标准换来一致。</div></div>
+    <div class="row"><div class="t">规模</div><div class="d">平时预建索引、用近似换规模，把大数据在架构层化解。</div></div>
+    <div class="row"><div class="t">多任务</div><div class="d">拆步骤、按依赖图并行/串行编排，但每步仍限于标准动作。</div></div>
+  </div>
+
+  <p class="ask">苹果的强，不在某个模型多聪明，而在这台机器每个环节都「提前把活干好、把范围划清」。</p>
+  <p>智能可以靠模型堆，但稳、快、不崩、不乱来——是架构给的。</p>
+
+  <div class="footer">
+    数据来源 · AppIntentSchemas · HomeAppIntents · Photos AppIntents · OmniSearch · CLIPIndex（iOS 27 / macOS 26）<br>
+    关键符号 · AnswerSynthesisPrivateCloudCompute · executionPlan · ExecutorAppIntent · AccessoryEntity · AppShortcutPhrase · AutomationTrigger · WFAction · ComposeWorkflow · WorkflowGeneration · UseModelAction · IntelligenceAction · CLIPCentroidCodebook · cosineSimilarity<br>
+    方法 · 系统 dyld shared cache 导出符号 + cstring 提取 + swift demangle<br>
+    仅供研究学习 · 符号反映接口结构，不含内部实现细节
+  </div>
+
+</article>
+</body>
+</html>

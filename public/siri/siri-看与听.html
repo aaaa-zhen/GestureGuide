@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>看与听 · 苹果怎么把同一份内容，为眼睛和耳朵分别优化</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<style>
+  :root{
+    --ink:#1a1a1a; --ink-soft:#3a3a3a; --ink-dim:#9a9a9a;
+    --line:#e6e6e6; --bg:#ffffff; --code-bg:#f6f6f6;
+    --eye:#0a6cff; --ear:#1d8a4e;
+    --mono:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"PingFang SC","Segoe UI","Helvetica Neue","Microsoft YaHei",sans-serif;
+    --r-box:18px; --r-tag:7px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:18px;line-height:1.85;
+    -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+  .doc{max-width:680px;margin:0 auto;padding:84px 28px 130px}
+  h1{font-size:33px;font-weight:700;line-height:1.35;letter-spacing:-.01em;margin-bottom:8px}
+  .sub{font-size:16px;color:var(--ink-dim);margin-bottom:52px;line-height:1.7}
+  h2{font-size:24px;font-weight:700;letter-spacing:-.01em;margin:66px 0 22px}
+  h3{font-size:18px;font-weight:700;margin:32px 0 14px}
+  p{margin-bottom:22px;color:var(--ink-soft)}
+  strong{font-weight:700;color:var(--ink)}
+  code{font-family:var(--mono);font-size:.82em;background:var(--code-bg);padding:2px 6px;border-radius:var(--r-tag);color:var(--ink);white-space:nowrap}
+  .ask{font-size:20px;font-weight:600;color:var(--ink);margin:22px 0}
+  .act-label{font-family:var(--mono);font-size:13px;color:var(--ink-dim);letter-spacing:.04em;margin-top:64px;margin-bottom:0}
+  .act-label + h2{margin-top:8px}
+  hr{border:none;border-top:1px solid var(--line);margin:58px 0}
+  blockquote{border-left:3px solid var(--ink);padding-left:22px;margin:0 0 22px}
+  blockquote p{margin:0;color:var(--ink-soft)}
+
+  .note-box{background:#f7f7f7;border-radius:var(--r-box);padding:22px 24px;margin:0 0 48px}
+  .note-box p{font-size:15px;line-height:1.75;margin:0}
+
+  /* 看 vs 听 对照 */
+  .vs{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:8px 0 22px}
+  .vs .col{border:1px solid var(--line);border-radius:var(--r-box);padding:18px 20px}
+  .vs .col.eye{background:#eef4ff;border-color:#d4e2fb}
+  .vs .col.ear{background:#eef7f1;border-color:#cfe7da}
+  .vs .ch{font-size:14px;font-weight:700;margin-bottom:10px;display:flex;align-items:center;gap:7px}
+  .vs .col.eye .ch{color:var(--eye)} .vs .col.ear .ch{color:var(--ear)}
+  .vs .big{font-size:19px;font-weight:600;color:var(--ink);line-height:1.4}
+  .vs .lbl{font-size:12px;color:var(--ink-dim);margin-top:6px}
+
+  .terms{margin:0 0 22px}
+  .terms .row{display:flex;gap:16px;padding:13px 0;border-top:1px solid var(--line)}
+  .terms .row:last-child{border-bottom:1px solid var(--line)}
+  .terms .t{font-family:var(--mono);font-size:12.5px;font-weight:600;flex:0 0 155px;color:var(--ink);line-height:1.55;word-break:break-all}
+  .terms .d{font-size:14.5px;color:var(--ink-soft);line-height:1.55}
+
+  /* 声音三档 */
+  .tiers{display:flex;gap:10px;margin:8px 0 22px;flex-wrap:wrap}
+  .tier{flex:1;min-width:120px;border:1px solid var(--line);border-radius:var(--r-box);padding:15px 14px;text-align:center}
+  .tier .tn{font-size:14px;font-weight:700;color:var(--ink)}
+  .tier .tl{font-size:12px;color:var(--ink-dim);margin-top:5px;line-height:1.5}
+
+  .foot{margin-top:60px;padding-top:24px;border-top:1px solid var(--line);
+    font-family:var(--mono);font-size:12px;color:var(--ink-dim);line-height:1.8}
+
+  @media(max-width:640px){
+    body{font-size:17px}.doc{padding:56px 20px 90px}h1{font-size:26px}h2{font-size:21px}
+    .vs{grid-template-columns:1fr}
+    .terms .row{flex-direction:column;gap:4px}.terms .t{flex:none}
+    code{white-space:normal;overflow-wrap:anywhere}
+  }
+</style>
+</head>
+<body>
+<article class="doc">
+
+  <h1>看与听</h1>
+  <p class="sub">同样一句回答，给眼睛看的和给耳朵听的，苹果让它们<strong>可以不一样</strong> · 基于系统私有框架的符号分析</p>
+
+  <div class="note-box">
+    <p>屏幕上写「H:63° L:52°」，Siri 念出来却是「最高 63 度，最低 52 度」——这不是 bug，是设计。<strong>看和听是两种完全不同的通道</strong>：眼睛喜欢简洁、可扫读；耳朵要的是连贯、自然、能听懂。苹果没有用一份文本硬凑两边，而是让<strong>同一个内容块同时带「显示版」和「朗读版」</strong>，再为「念」专门做了一套功夫。这篇讲清这套「看听分离」。</p>
+  </div>
+
+  <p class="ask">为什么不能「显示什么就念什么」？</p>
+  <p>因为对眼睛友好的，对耳朵往往是灾难。同一份信息，两种通道的最优解根本不同：</p>
+
+  <div class="vs">
+    <div class="col eye">
+      <div class="ch">👁 给眼睛 · displayText</div>
+      <div class="big">H:63° L:52°　☀️</div>
+      <div class="lbl">缩写、符号、表格——一眼扫到，省空间</div>
+    </div>
+    <div class="col ear">
+      <div class="ch">👂 给耳朵 · spoken</div>
+      <div class="big">「最高 63 度，最低 52 度，晴」</div>
+      <div class="lbl">展开、口语、有连接词——听一遍就懂</div>
+    </div>
+  </div>
+
+  <p>「H」念成「H」很怪、「☀️」没法念、表格更没法读。所以苹果在内容块里<strong>同时存两份</strong>：<code>displayText / displayString</code> 给屏幕，<code>spoken / speakableString</code> 给 TTS。模型产出时就为两条通道分别填好。</p>
+
+  <hr>
+
+  <p class="act-label">一</p>
+  <h2>朗读版不是「显示版去掉符号」</h2>
+
+  <p>它是<strong>独立写的一份</strong>。同一个数值卡，显示版是 <code>8,849m</code>，朗读版是「八千八百四十九米」；显示版可以只给数字，朗读版要补上「海拔」「大约」这些口语连接。<strong>不是机械转换，是为听重写。</strong></p>
+
+  <div class="terms">
+    <div class="row"><div class="t">displayString</div><div class="d">给屏幕：缩写、符号、紧凑排版，可扫读。</div></div>
+    <div class="row"><div class="t">spoken / speakableString</div><div class="d">给 TTS：展开成自然语言，补连接词、读法标准化。</div></div>
+    <div class="row"><div class="t">块级成对</div><div class="d">数值、标题、列表…每种块都能各带一份朗读文本，不是整段统一处理。</div></div>
+  </div>
+
+  <hr>
+
+  <p class="act-label">二</p>
+  <h2>念得自然：韵律控制</h2>
+
+  <p>有了朗读文本，还得「念得像人」。苹果有一套<strong>韵律控制（<code>ProsodyControlConfig</code>）</strong>——管语速、停顿、轻重、语调。所以它念长句会在逗号处停、把重点词加重、问句尾音上扬，而不是从头平到尾的机器音。</p>
+  <blockquote>
+    <p>韵律是「听感自然」的关键。同样一句话，停顿和重音放错位置，意思都会变——<code>ProsodyDetector</code> / <code>ProsodyControlConfig</code> 就是专门调这个的。文字管「说什么」，韵律管「怎么说」。</p>
+  </blockquote>
+
+  <hr>
+
+  <p class="act-label">三</p>
+  <h2>声音本身：文字怎么变成声波</h2>
+
+  <p>「念」不是放一段录音——它是<strong>实时合成</strong>出来的。从一串文字到耳朵里的声波，苹果的神经 TTS（框架 <code>SiriTTS</code> / <code>SiriSpeechSynthesis</code>）走三步，每步一个模型：</p>
+
+  <div class="terms">
+    <div class="row"><div class="t">① 时长模型</div><div class="d"><code>DurationModel</code>——决定<strong>每个音念多久</strong>。「啊」拖长还是短促、词间停多久，节奏感从这来。</div></div>
+    <div class="row"><div class="t">② 声学模型</div><div class="d"><code>AcousticModel</code>（带版本号，会迭代）——把音 + 时长 + 语调算成<strong>声学特征</strong>（频谱），决定音色和起伏。</div></div>
+    <div class="row"><div class="t">③ 声码器</div><div class="d">Vocoder——把声学特征<strong>渲染成真实波形</strong>。最后那层「像真人嗓子」就靠它。</div></div>
+  </div>
+  <p>这就是为什么它念<strong>没见过的词、临时拼的句子</strong>都自然——不是查录音库拼接，是<strong>从头生成</strong>。配合前面的韵律控制，停顿轻重都算进去。</p>
+
+  <h3>嗓音分「代」，不只分档</h3>
+  <p>符号里能看到几代声音并存，从离线到端侧神经：</p>
+  <div class="tiers">
+    <div class="tier"><div class="tn">Compact</div><div class="tl">轻量，离线可用<br><code>CompactVoice</code></div></div>
+    <div class="tier"><div class="tn">Natural</div><div class="tl">更自然，OPUS 编码<br><code>NaturalVoice</code></div></div>
+    <div class="tier"><div class="tn">Neural</div><div class="tl">端侧神经合成<br><code>DeviceNeuralTTS</code></div></div>
+  </div>
+  <p>选哪个由设备能力 + 网络定（<code>NeuralVoiceReady</code> 就绪才上神经版），还有 <code>NextGenVoice</code> 这种下一代在路上。你换 Siri 嗓音（<code>selectedVoice</code>，不同语言 / 性别 / 口音）切的就是这套。</p>
+
+  <h3>更进一步：用「你自己的声音」念</h3>
+  <p>最特别的是 <strong>Personal Voice</strong>（框架 <code>SiriTTSTraining</code>）。你照着提示读一段话，系统<strong>在设备上录入一份声音档案</strong>（<code>EnrollVoiceProfile</code>），合成出一个「你的嗓音」：</p>
+  <ul>
+    <li><strong>给无障碍用</strong>——<code>personalVoiceForAssistiveTechnologies</code>：有失语风险的人，提前留下自己的声音，之后用 Live Speech 打字、由「自己的声音」念出来。</li>
+    <li><strong>连唤醒词都能是你的声音</strong>——<code>EnrollVoiceTrigger</code>。</li>
+    <li><strong>声音不出端</strong>——录入和合成都在本地，是无障碍 + 隐私的结合。</li>
+  </ul>
+
+  <hr>
+
+  <p class="act-label">四</p>
+  <h2>边生成边念：不让你等</h2>
+
+  <p>实时合成有个风险：整句算完才出声，会卡顿。苹果用<strong>流式合成</strong>解决——<code>StreamingAudioRenderer</code>（还带 RTC 延迟指标，说明「首字延迟」是被盯的）：<strong>前几个字算好就先念，后面边算边接</strong>。所以它开口快、长句也不顿。这和前面识屏「边吐边渲染」、文字「逐字浮现」是同一套「流式」思路——<strong>能先给的先给，别让你等全部算完。</strong></p>
+
+  <hr>
+
+  <p class="act-label">五</p>
+  <h2>什么时候该念、念多少</h2>
+
+  <p>最后一层：<strong>不是所有回答都该出声</strong>。该不该念、念多少，看场景。通知播报（<code>AnnounceNotification</code>）会综合一堆上下文判断：</p>
+
+  <div class="terms">
+    <div class="row"><div class="t">在用什么</div><div class="d">戴着 AirPods / 在 CarPlay 里 → 适合念；手里正看着屏幕 → 未必要念。</div></div>
+    <div class="row"><div class="t">是否在放媒体</div><div class="d"><code>IsMediaPlaying</code>——正在听歌 / 导航，插播要克制。</div></div>
+    <div class="row"><div class="t">和上次同类吗</div><div class="d"><code>IsSameTypeAsLastAnnouncement</code>——连续同类通知，避免反复念全文。</div></div>
+  </div>
+
+  <p>所以免提（AirPods / 车里）时它把消息念全，而你盯着手机时它可能只给一眼能看完的卡片——<strong>「念不念、念多少」也是按通道择优的。</strong></p>
+
+  <hr>
+
+  <p class="ask">看和听是两条通道，苹果没让它们将就一份文本。</p>
+  <p>显示版、朗读版分开写，韵律让它念得像人，声音分档甚至能是你自己的，再按场景决定该不该出声——<strong>同一份内容，为眼睛和耳朵分别优化到底。</strong></p>
+
+  <div class="foot">
+    数据来源 · SiriTTS · SiriSpeechSynthesis · SiriTTSTraining · TextToSpeech · AnnounceNotification（iOS 27 / macOS 26）<br>
+    关键符号 · spoken · speakableString · displayString · ProsodyControlConfig · DurationModel · AcousticModel · CompactVoice · NaturalVoice · DeviceNeuralTTS · NeuralVoiceReady · EnrollVoiceProfile · personalVoiceForAssistiveTechnologies · StreamingAudioRenderer · AnnounceNotification<br>
+    方法 · 系统 dyld shared cache 导出符号 + swift demangle · 仅供研究学习
+  </div>
+
+</article>
+</body>
+</html>

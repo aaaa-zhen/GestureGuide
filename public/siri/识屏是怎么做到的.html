@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>识屏是怎么做到的 · 苹果 Siri 的屏幕感知架构</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<style>
+  :root{
+    --ink:#1a1a1a; --ink-soft:#3a3a3a; --ink-dim:#9a9a9a;
+    --line:#e6e6e6; --bg:#ffffff; --code-bg:#f6f6f6;
+    --good:#1d8a4e; --slow:#c4402a; --accent:#0a6cff;
+    --mono:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"PingFang SC","Segoe UI","Helvetica Neue","Microsoft YaHei",sans-serif;
+    --r-card:28px; --r-box:18px; --r-chip:12px; --r-tag:7px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:18px;line-height:1.9;
+    -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+  .doc{max-width:680px;margin:0 auto;padding:84px 28px 140px}
+
+  h1{font-size:34px;font-weight:700;line-height:1.35;letter-spacing:-.01em;margin-bottom:8px}
+  .sub{font-size:16px;color:var(--ink-dim);margin-bottom:64px;line-height:1.7}
+  h2{font-size:25px;font-weight:700;line-height:1.4;letter-spacing:-.01em;margin:72px 0 26px}
+  h3{font-size:19px;font-weight:700;margin:36px 0 16px}
+  p{margin-bottom:26px;color:var(--ink-soft)}
+  p:last-child{margin-bottom:0}
+  strong{font-weight:700;color:var(--ink)}
+  code{font-family:var(--mono);font-size:.84em;background:var(--code-bg);padding:2px 6px;
+    border-radius:var(--r-tag);color:var(--ink);white-space:nowrap}
+  pre{font-family:var(--mono);font-size:13.5px;line-height:1.75;background:var(--code-bg);
+    border-radius:var(--r-box);padding:20px 22px;margin:0 0 26px;overflow-x:auto;color:var(--ink)}
+  pre .c{color:var(--ink-dim)} pre .k{color:#9a3fc0} pre .s{color:#1d8a4e}
+  .ask{font-size:20px;font-weight:600;color:var(--ink);margin-bottom:26px}
+
+  .note-box{background:#f7f7f7;border-radius:var(--r-box);padding:22px 24px;margin:0 0 56px}
+  .note-box p{font-size:15px;line-height:1.75;color:var(--ink-soft);margin-bottom:12px}
+  .note-box p:last-child{margin-bottom:0}
+  .note-box .nb-h{font-size:13px;font-weight:700;color:var(--ink);letter-spacing:.02em;margin-bottom:10px;display:block}
+
+  ul,ol{margin:0 0 26px;padding-left:0;list-style:none}
+  li{margin-bottom:14px;color:var(--ink-soft);padding-left:28px;position:relative}
+  li::before{content:"";position:absolute;left:6px;top:13px;width:6px;height:6px;border-radius:50%;background:var(--ink-dim)}
+  li strong{display:inline}
+
+  hr{border:none;border-top:1px solid var(--line);margin:64px 0}
+  .act-label{font-family:var(--mono);font-size:13px;color:var(--ink-dim);letter-spacing:.04em;margin-top:72px;margin-bottom:0}
+  .act-label + h2{margin-top:8px}
+
+  /* 对照表 */
+  .cmp{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:8px 0 26px}
+  .cmp .col{border:1px solid var(--line);border-radius:var(--r-box);padding:20px}
+  .cmp .col.bad{background:#fdf4f2;border-color:#f3d9d2}
+  .cmp .col.good{background:#f1faf4;border-color:#cfeada}
+  .cmp .ch{font-size:14px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:7px}
+  .cmp .col.bad .ch{color:var(--slow)} .cmp .col.good .ch{color:var(--good)}
+  .cmp ul{margin:0} .cmp li{font-size:14px;line-height:1.6;margin-bottom:10px;padding-left:20px}
+  .cmp li::before{width:5px;height:5px;top:10px;left:4px}
+  .cmp .col.bad li::before{background:#d98b7c} .cmp .col.good li::before{background:#7cc79c}
+
+  /* 速度对比 demo */
+  .speed{border:1px solid var(--line);border-radius:var(--r-card);padding:26px 24px;margin:8px 0 26px;background:#fbfbfb}
+  .speed-run{display:flex;align-items:center;gap:12px;margin-bottom:22px;flex-wrap:wrap}
+  .speed-run button{font-family:var(--sans);font-size:15px;font-weight:600;color:#fff;background:var(--ink);
+    border:none;border-radius:999px;padding:11px 22px;cursor:pointer;transition:opacity .15s}
+  .speed-run button:hover{opacity:.85}
+  .speed-run button:disabled{opacity:.4;cursor:default}
+  .speed-run .q{font-size:14px;color:var(--ink-dim)}
+  .lane{margin-bottom:18px}
+  .lane:last-child{margin-bottom:0}
+  .lane-hd{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
+  .lane-hd .name{font-size:14px;font-weight:700}
+  .lane-hd .name.bad{color:var(--slow)} .lane-hd .name.good{color:var(--good)}
+  .lane-hd .t{font-family:var(--mono);font-size:13px;color:var(--ink-dim)}
+  .track{position:relative;height:34px;background:#eee;border-radius:10px;overflow:hidden}
+  .seg{position:absolute;top:0;height:100%;display:flex;align-items:center;justify-content:center;
+    font-size:11px;font-weight:600;color:#fff;white-space:nowrap;opacity:0;transition:opacity .2s}
+  .seg.show{opacity:1}
+  .seg.s1{background:#e0875f} .seg.s2{background:#d2683f} .seg.s3{background:#c4402a} .seg.s4{background:#a8331f}
+  .seg.g1{background:#3aa86a} .seg.g2{background:#1d8a4e}
+  .lane.good .track{background:#e7f3ec}
+  .speed-note{font-size:13px;color:var(--ink-dim);line-height:1.6;margin-top:16px;border-top:1px solid var(--line);padding-top:14px}
+
+  /* 四级阶梯 */
+  .ladder{margin:8px 0 26px}
+  .rung{display:flex;gap:14px;align-items:flex-start;border:1px solid var(--line);border-radius:var(--r-box);
+    padding:16px 18px;margin-bottom:10px;background:#fff;position:relative}
+  .rung .lv{flex:0 0 auto;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+    font-family:var(--mono);font-size:14px;font-weight:700;color:#fff}
+  .rung.l1 .lv{background:var(--good)} .rung.l2 .lv{background:#5ba35f}
+  .rung.l3 .lv{background:#d6a23f} .rung.l4 .lv{background:var(--slow)}
+  .rung .body{flex:1}
+  .rung .rt{font-size:15.5px;font-weight:700;color:var(--ink);margin-bottom:4px}
+  .rung .rt code{font-size:.8em}
+  .rung .rd{font-size:13.5px;color:var(--ink-dim);line-height:1.55}
+  .rung .cost{flex:0 0 auto;font-family:var(--mono);font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px}
+  .rung.l1 .cost,.rung.l2 .cost{background:#e7f3ec;color:var(--good)}
+  .rung.l3 .cost{background:#fbf2dd;color:#9a7320}
+  .rung.l4 .cost{background:#fdeae6;color:var(--slow)}
+  .ladder-arrow{text-align:center;font-size:12px;color:var(--ink-dim);font-family:var(--mono);margin:2px 0 10px}
+
+  /* 数据库流向图 */
+  .flow{border:1px solid var(--line);border-radius:var(--r-card);padding:28px 24px;margin:8px 0 26px;background:#fbfbfb;
+    display:flex;align-items:stretch;gap:14px}
+  .flow .node{flex:1;text-align:center;border-radius:var(--r-box);padding:18px 12px;display:flex;flex-direction:column;gap:7px;justify-content:center}
+  .flow .node.app{background:#eef4ff;border:1px solid #d4e2fb}
+  .flow .node.db{background:#1a1a1a;color:#fff}
+  .flow .node.siri{background:#f1faf4;border:1px solid #cfeada}
+  .flow .node .t{font-size:14px;font-weight:700;color:var(--ink)}
+  .flow .node.db .t{color:#fff}
+  .flow .node .d{font-size:12px;color:var(--ink-dim);line-height:1.5}
+  .flow .node.db .d{color:#9a9aa0}
+  .flow .arrow{flex:0 0 auto;align-self:center;display:flex;flex-direction:column;align-items:center;gap:3px;font-family:var(--mono);font-size:10px;color:var(--ink-dim)}
+  .flow .arrow .ln{font-size:16px;color:var(--ink)}
+
+  .terms{margin:0 0 26px}
+  .terms .row{display:flex;gap:16px;padding:14px 0;border-top:1px solid var(--line)}
+  .terms .row:last-child{border-bottom:1px solid var(--line)}
+  .terms .t{font-family:var(--mono);font-size:13px;font-weight:600;flex:0 0 200px;color:var(--ink);line-height:1.6;word-break:break-all}
+  .terms .d{font-size:15px;color:var(--ink-soft);line-height:1.6}
+
+  .footer{margin-top:80px;padding-top:28px;border-top:1px solid var(--line);
+    font-family:var(--mono);font-size:12.5px;color:var(--ink-dim);line-height:1.9}
+
+  @media(max-width:640px){
+    body{font-size:17px}
+    .doc{padding:56px 20px 100px}
+    h1{font-size:28px} h2{font-size:22px}
+    .cmp{grid-template-columns:1fr}
+    .flow{flex-direction:column}
+    .flow .arrow{transform:rotate(90deg)}
+    .terms .row{flex-direction:column;gap:4px}
+    .terms .t{flex:none}
+    li{overflow-wrap:anywhere} code{white-space:normal;overflow-wrap:anywhere}
+  }
+</style>
+</head>
+<body>
+<article class="doc">
+
+  <h1>识屏，是怎么做到的</h1>
+  <p class="sub">为什么苹果新 Siri 看一眼屏幕就能答，而「用时现抓」总是慢半拍 · 基于系统私有框架的符号分析</p>
+
+  <div class="note-box">
+    <span class="nb-h">这篇在讲什么</span>
+    <p>很多人做屏幕 agent 的第一直觉是：提问那一刻，<strong>截个图喂多模态模型</strong>，或者<strong>抓一整棵 UI 树丢给 LLM</strong>。能跑，但慢——慢不在「用截图还是用 UI 树」，而在<strong>「用时才现抓、现处理一整屏」</strong>。</p>
+    <p>苹果其实<strong>两种来源都用</strong>（截图、UI 层级都在它的清单里，后面会看到）。区别不在用哪种，而在<strong>时机</strong>：它不在你提问时才去抓——屏幕内容平时就被结构化、写进了一个常驻库，识屏只是一次查询。</p>
+  </div>
+
+  <p class="ask">同样一个问题：「打给屏幕上这个人」。你的 agent 要花几百毫秒，苹果几乎瞬间。差在哪？</p>
+
+  <p>差别不在模型快慢，<strong>在架构</strong>。先把两条路摆在一起看。</p>
+
+  <div class="cmp">
+    <div class="col bad">
+      <div class="ch">✕ 用时现抓</div>
+      <ul>
+        <li><strong>提问那一刻才抓</strong>：截图或抓 UI 树都一样，是冷启动</li>
+        <li><strong>给的是原始素材</strong>（像素 / 整棵树），模型得现场认</li>
+        <li><strong>整屏全喂</strong>，token 多、延迟高</li>
+        <li>电话号是现场认出的<strong>字符串</strong>，还要再判断"这是不是号码、能拿它干嘛"</li>
+      </ul>
+    </div>
+    <div class="col good">
+      <div class="ch">✓ 平时预建（苹果）</div>
+      <ul>
+        <li><strong>平时就建好</strong>：内容提前被结构化、写进常驻库</li>
+        <li><strong>拿到的是结构化实体</strong>，进来就带类型</li>
+        <li><strong>按问题检索</strong>排序，只给相关的几条</li>
+        <li>电话号是 <code>OnScreenPhoneNumber</code> + 现成的拨号 intent，<strong>直接能执行</strong></li>
+      </ul>
+    </div>
+  </div>
+
+  <p>关键认知：<strong>苹果把「识别」从「用时」挪到了「平时」</strong>。识别这步没有消失，而是被前置成了「写入」——所以提问时只剩查询。下面这个对比能直接看到时间差。</p>
+
+  <!-- 速度对比 demo -->
+  <div class="speed" id="speed">
+    <div class="speed-run">
+      <button id="speed-go">▶ 跑一次「打给屏幕上的人」</button>
+      <span class="q">看两条路各自要走几步</span>
+    </div>
+
+    <div class="lane bad">
+      <div class="lane-hd"><span class="name bad">用时现抓 + 模型</span><span class="t" id="t-bad">—</span></div>
+      <div class="track" id="track-bad">
+        <div class="seg s1" data-x="0"  data-w="22">截屏</div>
+        <div class="seg s2" data-x="22" data-w="30">视觉识别</div>
+        <div class="seg s3" data-x="52" data-w="28">抽实体</div>
+        <div class="seg s4" data-x="80" data-w="20">找动作</div>
+      </div>
+    </div>
+
+    <div class="lane good">
+      <div class="lane-hd"><span class="name good">苹果 · 读实体库</span><span class="t" id="t-good">—</span></div>
+      <div class="track" id="track-good">
+        <div class="seg g1" data-x="0"  data-w="10">查库</div>
+        <div class="seg g2" data-x="10" data-w="8">排序</div>
+      </div>
+    </div>
+
+    <div class="speed-note" id="speed-note">点上面的按钮。左边每一步都是提问后现做的；右边「写入」早在你打开界面时就完成了，提问时只剩查库 + 排序。</div>
+  </div>
+
+  <hr>
+
+  <p class="act-label">核心一</p>
+  <h2>屏幕内容，平时就在写库</h2>
+
+  <p>苹果有个常驻的<strong>「屏幕实体数据库」</strong>（私有框架 <code>AppIntentsLiveEntitySupport</code>，落地是一个 SQLite 库）。它通过三个 XPC <code>distributed actor</code> 读写——这是从符号里直接还原出来的：</p>
+
+  <div class="terms">
+    <div class="row"><div class="t">Writer · update(feed:content:)</div><div class="d">App 在<strong>渲染界面的同时</strong>，把「当前屏幕上有哪些实体」增量写入。支持 <code>appending</code> / <code>removing</code>，所以是<strong>实时维护</strong>，不是一次性快照。</div></div>
+    <div class="row"><div class="t">Reader · state()</div><div class="d">Siri 侧<strong>读库</strong>，一次拿到所有 <code>LiveAppEntityFeed</code>。不碰屏幕、不做识别。</div></div>
+    <div class="row"><div class="t">Admin · databasePath()</div><div class="d">管 schema、按 App 清理。确认它是<strong>真·落盘数据库</strong>，不是临时内存对象。</div></div>
+  </div>
+
+  <p>写进去的是 <code>AttributedEntityIdentifier</code>——<strong>只存 ID + 属性引用</strong>，不存大对象，所以写入极轻、可以高频更新。这就是「识别被前置成写入」的物理形态：</p>
+
+  <div class="flow">
+    <div class="node app"><div class="t">App 进程</div><div class="d">边渲染边写<br>Writer.update</div></div>
+    <div class="arrow"><span class="ln">→</span>写入<br>(平时)</div>
+    <div class="node db"><div class="t">实体数据库</div><div class="d">LiveAppEntityFeed<br>常驻 · 落盘</div></div>
+    <div class="arrow"><span class="ln">→</span>读取<br>(用时)</div>
+    <div class="node siri"><div class="t">Siri / 智能</div><div class="d">Reader.state()<br>查库即得</div></div>
+  </div>
+
+  <pre><span class="c">// 从符号还原的写入接口（示意）</span>
+Writer.update(
+  feed: LiveAppEntityFeed,
+  content: [AttributedEntityIdentifier]   <span class="c">// 只存 ID + 属性</span>
+)
+Writer.update(feed:, appending: entity)   <span class="c">// 增量加</span>
+Writer.update(feed:, removing: entity)     <span class="c">// 增量删</span>
+
+<span class="c">// Siri 侧：不识别，只读库</span>
+Reader.state() -> [LiveAppEntityFeed]</pre>
+
+  <hr>
+
+  <p class="act-label">核心二</p>
+  <h2>所有屏幕，归约成一套语义元素</h2>
+
+  <p>不是每个 App 都会主动写库。没写的怎么办？苹果还有一套统一的<strong>语义元素模型</strong> <code>IntelligenceElement</code>（框架 <code>UIIntelligenceSupport</code>）：不管原生控件还是网页，最后都被归约成<strong>同一套带类型的树</strong>。从符号里数出来的类型：</p>
+
+  <ul>
+    <li><strong>文本类</strong>　Text · Document · ImageMedia</li>
+    <li><strong>控件类</strong>　Button（带 Role：primary / cancel / destructive）· Toggle</li>
+    <li><strong>结构类</strong>　Table / TableRow / TableCell · Collection / CollectionItem / Section · NavigationSplitPane</li>
+    <li><strong>容器类</strong>　Window · Screen · Scrollable（带 ScrollPosition）</li>
+  </ul>
+
+  <p>关键机制：每个组件自己实现 <code>intelligenceSubelements()</code>——<strong>控件主动吐出自己的语义子元素</strong>，由收集器沿层级拼成树。这是「组件自报家门」，不是系统去截图猜。</p>
+
+  <h3>网页这种「一大块」怎么办？</h3>
+  <p>网页对系统是 WebKit 渲染的一整块，不像原生控件天然带类型。苹果给了专门通道 <strong>wka（WebKit Awareness）</strong>——符号里有 <code>WKAccessibilityWebPageObject</code> 和开关 <code>wkaPassages</code> / <code>wkaHandoff</code>：</p>
+  <ul>
+    <li><strong>wkaPassages</strong>：WebKit 把网页正文经 accessibility 通道切成<strong>段落（passages）</strong>，导出成 <code>OnScreenUIText</code>，而不是给一张图。</li>
+    <li>再在文本上叠<strong>带字符区间的实体</strong>：<code>DetectedLink(url, textRange)</code>、<code>DetectedPhoneNumber(.., textRange)</code>、<code>DetectedAddress(.., textRange)</code>——「原文第 x–y 个字符是个电话」。</li>
+  </ul>
+  <p>所以网页上的电话能直接点拨：它不是从截图 OCR 的字符串，而是一个挂着拨号动作的强类型实体。</p>
+
+  <hr>
+
+  <p class="act-label">核心三</p>
+  <h2>一条降级阶梯：结构优先，像素兜底</h2>
+
+  <p>把上面拼起来，就是识屏的完整优先级。符号里的 <code>OnScreenContentSources</code> 是个 OptionSet，正好对应这四级——<strong>从快到慢，能在上面解决就绝不往下走</strong>：</p>
+
+  <div class="ladder">
+    <div class="rung l1">
+      <div class="lv">1</div>
+      <div class="body"><div class="rt"><code>appEntities</code> · 读实体库</div>
+        <div class="rd">App 已主动写入。一次查库就拿到结构化、带类型、带 intent 的实体。</div></div>
+      <div class="cost">最快</div>
+    </div>
+    <div class="ladder-arrow">↓ 库里没有，退一步</div>
+    <div class="rung l2">
+      <div class="lv">2</div>
+      <div class="body"><div class="rt"><code>uiHierarchyContent</code> · 读语义树 / wka 段落</div>
+        <div class="rd">控件 / WebKit 通过 a11y 自报的 IntelligenceElement 树。已存在的结构，直接读。</div></div>
+      <div class="cost">低</div>
+    </div>
+    <div class="ladder-arrow">↓ 结构拿不到，再退一步</div>
+    <div class="rung l3">
+      <div class="lv">3</div>
+      <div class="body"><div class="rt"><code>windowContentGeneratedPDF</code> · 窗口转 PDF</div>
+        <div class="rd">把整窗渲染成带分页的 PDF（<code>_intelligenceWritePDF</code>），文本可选、保留版面。</div></div>
+      <div class="cost">中</div>
+    </div>
+    <div class="ladder-arrow">↓ 全都没有，最后兜底</div>
+    <div class="rung l4">
+      <div class="lv">4</div>
+      <div class="body"><div class="rt"><code>appWindowSnapshots</code> · 截图</div>
+        <div class="rd">最后才走 <code>_intelligenceCaptureCGImage</code> 截屏，交给视觉识别。</div></div>
+      <div class="cost">最慢</div>
+    </div>
+  </div>
+
+  <p>你的 agent 默认从<strong>第 4 级（截图）</strong>起步——等于每次都在重做苹果提前做好的事。苹果绝大多数情况停在<strong>第 1–2 级</strong>。</p>
+
+  <hr>
+
+  <p class="act-label">核心四</p>
+  <h2>完整链路：从一屏，到一个能点的实体</h2>
+
+  <p>把前面三节串起来，看一条内容从屏幕到「可执行实体」实际走的五步——每步都有对应的真实符号：</p>
+
+  <div class="ladder">
+    <div class="rung l1">
+      <div class="lv">1</div>
+      <div class="body"><div class="rt">遍历采集 <code>FragmentCollector</code></div>
+        <div class="rd">沿 UI 层级遍历（<code>traverseHierarchy</code>，带祖先和窗口），不是截屏。关键：只收<strong>看得见</strong>的（<code>fractionVisible</code> 过滤被遮挡 / 划出屏的），还能「只要布局不要内容」（<code>collectWindowLayoutOnly</code>）省开销。</div></div>
+    </div>
+    <div class="ladder-arrow">↓ 一边遍历，一边顺手做一件事</div>
+    <div class="rung l1">
+      <div class="lv">2</div>
+      <div class="body"><div class="rt">顺带抓「能做什么」 <code>appIntentsRequest</code></div>
+        <div class="rd">采集每个元素时，<strong>同时把它能触发的 App Intent 一起抓出来</strong>。这就是「看到即可执行」的来源——电话号在被收集的那一刻，就已经挂上了「拨号」这个动作。</div></div>
+    </div>
+    <div class="ladder-arrow">↓ 整理成结构</div>
+    <div class="rung l2">
+      <div class="lv">3</div>
+      <div class="body"><div class="rt">归约 + 抽实体 <code>IntelligenceElement</code></div>
+        <div class="rd">收上来的碎片拼成统一语义树；在文本上叠带字符区间的强类型实体（<code>DetectedPhoneNumber(.., textRange)</code> 等）。到这内容已经「带类型、带位置、带动作」。</div></div>
+    </div>
+    <div class="ladder-arrow">↓ 存好，等人来问</div>
+    <div class="rung l2">
+      <div class="lv">4</div>
+      <div class="body"><div class="rt">缓存 + 预热 <code>prewarm</code> / <code>refresh</code></div>
+        <div class="rd">结果落进 UIContext 缓存，后台 <code>prewarm</code> / <code>warmup</code> 提前备好、<code>refresh</code> 增量更新。用户提问前，这一切就绪了。</div></div>
+    </div>
+    <div class="ladder-arrow">↓ 提问那一刻，只剩这步</div>
+    <div class="rung l1">
+      <div class="lv">5</div>
+      <div class="body"><div class="rt">检索排序 <code>retrieveAndRankContextValues(query:)</code></div>
+        <div class="rd">按你的问题对缓存里的实体<strong>排序</strong>、按 <code>threshold</code> 截断，只取最相关的几条给模型。命中的实体自带 <code>DetectedAppIntent</code>，可直接执行。</div></div>
+    </div>
+  </div>
+
+  <p>看清这五步就明白它为什么快：<strong>第 1–4 步全在你提问之前、后台就做完了</strong>；提问时只剩第 5 步「排个序」。截图 + 模型的做法，相当于每次提问都从第 1 步重头跑一遍，还得用视觉模型现认。</p>
+
+  <hr>
+
+  <p class="act-label">核心五</p>
+  <h2>跨应用：屏上看到一首歌，怎么跳到别的 App 播</h2>
+
+  <p class="ask">你在某个 App 里看到一首歌，说「<strong>播放这首歌</strong>」——它能拉起音乐 App 放出来。识屏只「看懂屏幕上是一首歌」，<strong>跨到另一个 App 去执行</strong>，靠的是什么？</p>
+
+  <p>靠的是<strong>两套已经讲过的机制对接</strong>，而不是某个专门的「跨应用」黑科技。两个有据的事实：</p>
+
+  <div class="ladder">
+    <div class="rung l1">
+      <div class="lv">1</div>
+      <div class="body"><div class="rt">识屏给的是「带类型的实体」，不是图</div>
+        <div class="rd">前面讲过：屏上那块被识成带<strong>语义类型</strong>（<code>SemanticContentType</code>）的实体——「这是一首歌曲」，而且采集时就<strong>挂上了可执行的 <code>DetectedAppIntent</code></strong>。</div></div>
+    </div>
+    <div class="ladder-arrow">↓ 类型对上 App 声明的类型</div>
+    <div class="rung l2">
+      <div class="lv">2</div>
+      <div class="body"><div class="rt">App 通过 App Intents 声明「我能处理歌曲」</div>
+        <div class="rd">音乐 App 实现了标准的「播放媒体」意图（<code>INPlayMediaIntent</code>），声明自己吃「媒体 / 歌曲」这种类型。<strong>类型对上，这首歌就能交给它执行。</strong></div></div>
+    </div>
+  </div>
+
+  <p>所以「跨应用」的本质不是「Siri 钻进了 Apple Music」，而是<strong>类型把两边接上了</strong>：识屏产出带类型的实体，App 声明能处理这个类型，系统把实体当参数交给那个 App 的标准 intent 执行。歌曲如此，「在地图打开这个地址」「用某 App 买这件商品」是同一个道理——<strong>都靠「语义类型」这个共同语言。</strong></p>
+
+  <blockquote>
+    <p><strong>坦白一处：</strong>「识屏实体 → 选定哪个 App → 强转成参数」这中间的<strong>精确调度步骤</strong>，符号层没能完整串起来——上面只列了两端确凿的事实（实体带类型 + App 声明类型 + 标准媒体 intent 存在），中间的选 App / 参数绑定是<strong>合理推断</strong>，不当成确证。能确定的是：<strong>这条桥靠「语义类型」对接</strong>，和前面所有「封闭标准」一脉相承。</p>
+  </blockquote>
+
+  <hr>
+
+  <p class="act-label">核心六</p>
+  <h2>那「举起相机问现实」呢？那是另一条路</h2>
+
+  <p>前面讲的是<strong>系统自动识屏</strong>——平时建好、用时查库。但还有另一件事容易和它混：<strong>用户主动举着屏幕问</strong>「这是什么花？」「这个商品哪买？」。苹果把这条单独叫 <strong>Visual Intelligence（视觉智能）</strong>，走的是<strong>另一条路</strong>。</p>
+
+  <div class="cmp">
+    <div class="col good">
+      <div class="ch">自动识屏</div>
+      <ul>
+        <li>系统自动、平时就建好</li>
+        <li>走<strong>结构化实体 + 缓存</strong></li>
+        <li>符号：<code>OnScreenContent</code></li>
+      </ul>
+    </div>
+    <div class="col bad">
+      <div class="ch">视觉智能 · 问现实世界</div>
+      <ul>
+        <li>用户主动<strong>举起相机问</strong>才触发</li>
+        <li>对象是<strong>现实里的东西</strong>（拍下来）</li>
+        <li>符号：<code>CameraCapture</code> · <code>VisualIntelligence</code></li>
+      </ul>
+    </div>
+  </div>
+
+  <p>注意这里的对象——不是屏幕，是<strong>现实世界</strong>。Visual Intelligence 主要是你<strong>举起手机对着实物问</strong>：「这是什么花？」「这家店几点关？」「这件衣服哪买？」（符号里有 <code>CameraCapture</code> 一整套 + <code>BusinessLookupProvider</code> 查店铺）。它的输入是<strong>相机画面</strong>，所以必然要拍下来过视觉——和「自动识屏」走结构化是<strong>两条完全不同的路</strong>。</p>
+
+  <h3>但苹果在「拍了再问」这条路上多缝了两层</h3>
+  <p>它不是把照片一股脑丢给大模型，而是：</p>
+
+  <div class="flow">
+    <div class="node a"><div class="t">拍下画面</div><div class="d">CameraCapture</div></div>
+    <div class="arrow">→</div>
+    <div class="node b"><div class="t">端侧视觉先过</div><div class="d">OCR / 物体 / 商品 / 店铺<br>能答就地答</div></div>
+    <div class="arrow">→</div>
+    <div class="node c"><div class="t">图 + 已识别文字</div><div class="d">imageAndText 一起喂模型</div></div>
+  </div>
+
+  <ul>
+    <li><strong>上模型前，端侧视觉先啃一遍。</strong><code>textRecognition</code>(OCR) / <code>objectness</code>(物体) / <code>productLookup</code>(商品) / <code>BusinessLookup</code>(店铺)——端侧能直接答的（认字、查商品、查营业时间），<strong>就地解决、不上大模型</strong>。这一层就是「本地视觉，快又通用」。</li>
+    <li><strong>真要上模型，也是「图 + 文」一起喂。</strong>符号 <code>imageAndTextInput</code>：不只给像素，把端侧已识别出的文字 / 实体一并附上——等于先帮大模型把画面读了一遍，省了「先认再理解」。</li>
+  </ul>
+
+  <blockquote>
+    <p><strong>所以「视觉智能」走的是拍照 + 视觉，和自动识屏不是一回事</strong>——一个问<strong>现实</strong>（相机）、一个懂<strong>屏幕</strong>（结构化）。但它在视觉这条路上的功夫，和你的 agent 思路同源：<strong>端侧先过滤、能就地答就不上模型、上模型也连文字一起喂。</strong></p>
+  </blockquote>
+
+  <hr>
+
+  <p class="act-label">核心七</p>
+  <h2>那图片里的内容呢？比如「一个金发女生」</h2>
+
+  <p class="ask">屏幕上是一张照片：一个金发女生。我问「屏幕上是什么」——这里<strong>没有控件、没有 UI tree、没有文字</strong>，全是像素。前面那套结构化机制根本够不着。它怎么办？</p>
+
+  <p>这正是结构化的<strong>边界</strong>。到了纯图像内容，确实<strong>回退到视觉</strong>——但苹果没有粗暴地「截全屏丢大模型」，而是把图片<strong>当成一个独立的内容项</strong>来处理。符号里这张图是 <code>OnScreenContent.Image</code>，带三个字段：<code>image</code>（像素本身）、<code>isSnapshot</code>（是不是截的）、<code>entity</code>（关联的实体）。处理还是分档：</p>
+
+  <div class="ladder">
+    <div class="rung l1">
+      <div class="lv">1</div>
+      <div class="body"><div class="rt">端侧先「读图」，把像素变成文字 <code>imageCaptioner</code></div>
+        <div class="rd">端侧有个<strong>图片字幕模型</strong>（<code>imageCaptionDecoder</code>，按需下载），把图描述成一句话——「一位金发女性的肖像」。还叠 <code>faceDetection</code>(人脸) / OCR / 物体检测。产出 <code>imageCaptionResult</code> 进上下文。<strong>这一步是视觉，但仍是端侧、轻量、结构化（出的是文字）。</strong></div></div>
+    </div>
+    <div class="ladder-arrow">↓ 简单问题，到这就够了</div>
+    <div class="rung l2">
+      <div class="lv">2</div>
+      <div class="body"><div class="rt">能就地答的，不上大模型</div>
+        <div class="rd">「这是人像吗 / 有几个人 / 上面写了什么字」——端侧 caption + 人脸 + OCR 的结果直接答，省了大模型。</div></div>
+    </div>
+    <div class="ladder-arrow">↓ 真要深问，才升级</div>
+    <div class="rung l1">
+      <div class="lv">3</div>
+      <div class="body"><div class="rt">复杂问题：连图带描述一起喂多模态 <code>imageAndTextInput</code></div>
+        <div class="rd">「她什么表情 / 这像谁的画风」——把<strong>那一张图</strong>（不是整屏）编码成视觉 token（<code>encodeImage</code> / <code>imagePromptComponent</code>），连同问题、连同端侧已 caption 出来的文字，一起喂多模态模型。</div></div>
+    </div>
+  </div>
+
+  <p>所以回到你的问题：金发女生这种纯图像内容，<strong>确实绕不开视觉</strong>——但苹果的做法是「<strong>只取那一张图、端侧先 caption 成文字、能就地答就不上模型</strong>」。它把<strong>视觉这条路也做成了「先端侧结构化、再按需升级」</strong>，和前面文本那套是同一个哲学，只是把「OCR / 解析」换成了「caption / 人脸检测」。</p>
+
+  <blockquote>
+    <p>一句话收口：<strong>结构化够得着的（控件、文字、实体），平时就读好缓存；够不着的（图片像素），端侧视觉先 caption 成文字，最后才连图喂模型。</strong>从控件到像素，是一条连续的「能结构化就结构化、不能才上视觉、上视觉也先端侧」的降级链。</p>
+  </blockquote>
+
+  <hr>
+
+  <p class="act-label">落地</p>
+  <h2>你的 agent 怎么改</h2>
+
+  <p>不需要 App Intents，这套思路任何平台都能搬。按性价比排序：</p>
+
+  <ol style="counter-reset:s">
+    <li><strong>建一份常驻「屏幕缓存」，别每次重抓。</strong>维护一份结构化屏幕状态，UI 变化时增量 append / remove，而不是每次全量截图。query 来时读缓存。</li>
+    <li><strong>优先读结构，截图当兜底。</strong>能拿 DOM（网页）/ a11y 树（原生）就别截图。归约成统一语义元素（text / button / table / link…）。</li>
+    <li><strong>预抽实体并挂动作。</strong>抓到文本立刻用规则 / 小模型抽出 链接 / 电话 / 地址 + 字符区间，并绑定可执行动作。别留给大模型现抽。</li>
+    <li><strong>检索而非全喂。</strong>query 来时对缓存做检索 + 排序 + 可见性过滤 + 超时，只把 top-k 相关片段给模型。</li>
+    <li><strong>降级链。</strong>结构命中就用；拿不到再 PDF / 截图。把视觉识别压到最后，而不是当默认入口。</li>
+    <li><strong>问屏：截图前先过端侧视觉，喂模型时带上文字。</strong>用户主动问屏躲不开截图——但学苹果，先用本地 OCR / 检测啃一遍，能就地答的别上模型；真要上，把 OCR 出来的文字连图一起喂（<code>imageAndText</code>），别让大模型从零看图。</li>
+  </ol>
+
+  <p class="ask">苹果不是「识屏快」，是把识别从「用时」搬到了「平时」。</p>
+  <p>你要快，就别在提问时才去看屏幕——平时就维护好一份结构化、可检索、带动作的屏幕缓存。</p>
+
+  <div class="footer">
+    数据来源 · IntelligenceFlowContext · UIIntelligenceSupport · AppIntentsLiveEntitySupport · VisualIntelligence（iOS 27 / macOS 26）<br>
+    关键符号 · OnScreenContentSources · FragmentCollector · appIntentsRequest · IntelligenceElement · DetectedPhoneNumber · retrieveAndRankContextValues · DetectedAppIntent · SemanticContentType · INPlayMediaIntent · wkaPassages · imageCaptioner · VisualIntelligence · CameraCapture<br>
+    方法 · 系统 dyld shared cache 导出符号 + swift demangle<br>
+    仅供研究学习 · 符号反映接口结构，不含内部实现细节与具体数值
+  </div>
+
+</article>
+
+<script>
+// 速度对比动画
+(function(){
+  const go=document.getElementById("speed-go");
+  const trackBad=document.getElementById("track-bad");
+  const trackGood=document.getElementById("track-good");
+  const tBad=document.getElementById("t-bad"), tGood=document.getElementById("t-good");
+  const note=document.getElementById("speed-note");
+  const BAD_MS=520, GOOD_MS=45;     // 示意：两条路的相对量级
+  const PXW=trackBad.clientWidth || 360;
+
+  function place(track){
+    track.querySelectorAll(".seg").forEach(s=>{
+      const x=+s.dataset.x, w=+s.dataset.w;
+      s.style.left=x+"%"; s.style.width=w+"%"; s.classList.remove("show");
+    });
+  }
+  function runLane(track, totalMs, label){
+    return new Promise(res=>{
+      const segs=[...track.querySelectorAll(".seg")];
+      const t0=performance.now();
+      let i=0;
+      function next(){
+        if(i>=segs.length){res(); return;}
+        segs[i].classList.add("show");
+        const w=+segs[i].dataset.w;
+        i++;
+        setTimeout(next, totalMs*(w/100));
+      }
+      next();
+      // 计时显示
+      const tick=setInterval(()=>{ label.textContent=Math.round(performance.now()-t0)+" ms"; },16);
+      setTimeout(()=>{clearInterval(tick); label.textContent=totalMs+" ms ✓";}, totalMs+20);
+    });
+  }
+  go.addEventListener("click", async ()=>{
+    go.disabled=true;
+    place(trackBad); place(trackGood);
+    tBad.textContent="0 ms"; tGood.textContent="0 ms";
+    note.textContent="左边：截屏 → 视觉识别 → 抽实体 → 找动作，每步都在提问后现做。右边：实体早已在库里，只剩查库 + 排序。";
+    await Promise.all([ runLane(trackBad,BAD_MS,tBad), runLane(trackGood,GOOD_MS,tGood) ]);
+    note.textContent="看到了吗——右边几乎一闪就完。不是模型更快，是它把『识别』那几段在你提问前就做完了。";
+    go.disabled=false;
+  });
+})();
+</script>
+</body>
+</html>
