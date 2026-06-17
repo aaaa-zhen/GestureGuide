@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Siri 的动画 · 发光球、状态、形变与流式进场</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<style>
+  :root{
+    --ink:#1a1a1a; --ink-soft:#3a3a3a; --ink-dim:#9a9a9a;
+    --line:#e6e6e6; --bg:#ffffff; --code-bg:#f6f6f6;
+    --accent:#0a6cff; --good:#1d8a4e; --old:#9a8a55;
+    --mono:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"PingFang SC","Segoe UI","Helvetica Neue","Microsoft YaHei",sans-serif;
+    --r-box:18px; --r-tag:7px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:18px;line-height:1.85;
+    -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+  .doc{max-width:680px;margin:0 auto;padding:84px 28px 130px}
+  h1{font-size:33px;font-weight:700;line-height:1.35;letter-spacing:-.01em;margin-bottom:8px}
+  .sub{font-size:16px;color:var(--ink-dim);margin-bottom:52px;line-height:1.7}
+  h2{font-size:23px;font-weight:700;letter-spacing:-.01em;margin:60px 0 20px}
+  h3{font-size:18px;font-weight:700;margin:30px 0 14px}
+  p{margin-bottom:22px;color:var(--ink-soft)}
+  strong{font-weight:700;color:var(--ink)}
+  code{font-family:var(--mono);font-size:.82em;background:var(--code-bg);padding:2px 6px;border-radius:var(--r-tag);color:var(--ink);white-space:normal;overflow-wrap:anywhere}
+  .ask{font-size:20px;font-weight:600;color:var(--ink);margin:22px 0}
+  .act-label{font-family:var(--mono);font-size:13px;color:var(--ink-dim);letter-spacing:.04em;margin-top:56px;margin-bottom:0}
+  .act-label + h2{margin-top:8px}
+  hr{border:none;border-top:1px solid var(--line);margin:54px 0}
+  blockquote{border-left:3px solid var(--ink);padding-left:22px;margin:0 0 22px}
+  blockquote p{margin:0;color:var(--ink-soft)}
+
+  .note-box{background:#f7f7f7;border-radius:var(--r-box);padding:22px 24px;margin:0 0 44px}
+  .note-box p{font-size:15px;line-height:1.75;margin:0}
+
+  .terms{margin:0 0 22px}
+  .terms .row{display:flex;gap:16px;padding:13px 0;border-top:1px solid var(--line)}
+  .terms .row:last-child{border-bottom:1px solid var(--line)}
+  .terms .t{font-family:var(--mono);font-size:12px;font-weight:600;flex:0 0 150px;color:var(--ink);line-height:1.55;word-break:break-all}
+  .terms .d{font-size:14.5px;color:var(--ink-soft);line-height:1.55}
+
+  /* 状态机 */
+  .states{display:flex;gap:8px;align-items:stretch;margin:8px 0 22px;flex-wrap:wrap}
+  .st{flex:1;min-width:88px;border:1px solid var(--line);border-radius:var(--r-box);padding:13px 10px;text-align:center}
+  .st .sn{font-size:14px;font-weight:700;color:var(--ink)}
+  .st .sl{font-size:11.5px;color:var(--ink-dim);margin-top:4px;line-height:1.45}
+  .st-arrow{flex:0 0 auto;align-self:center;color:var(--ink-dim);font-family:var(--mono);font-size:12px}
+
+  /* 旧版标记 */
+  .old-tag{display:inline-block;font-family:var(--mono);font-size:11px;font-weight:700;color:var(--old);
+    background:#f6f1e2;border-radius:999px;padding:2px 9px;margin-left:8px;vertical-align:middle}
+
+  .foot{margin-top:56px;padding-top:24px;border-top:1px solid var(--line);
+    font-family:var(--mono);font-size:12px;color:var(--ink-dim);line-height:1.8}
+
+  @media(max-width:640px){
+    body{font-size:17px}.doc{padding:56px 20px 90px}h1{font-size:26px}h2{font-size:21px}
+    .states{flex-direction:column}.st-arrow{transform:rotate(90deg)}
+    .terms .row{flex-direction:column;gap:4px}.terms .t{flex:none}
+  }
+</style>
+</head>
+<body>
+<article class="doc">
+
+  <h1>Siri 的动画</h1>
+  <p class="sub">发光球怎么动、聆听 / 思考 / 说话怎么切、球怎么变成面板——Siri 不止「流式吐字」一套动画 · 基于系统私有框架的符号分析</p>
+
+  <div class="note-box">
+    <p>大家熟悉的 Siri 动画是回答时「逐字浮现」（那套在<strong>生成式 UI</strong> 篇讲过）。但那只是其中一套。从系统里翻出来，Siri 至少还有：<strong>发光球（Orb）、状态切换、球↔面板的形变、色差焦散的视觉底子、发送飞入</strong>。这篇把这些动画各讲一段。</p>
+  </div>
+
+  <hr>
+
+  <p class="act-label">一 · 主角</p>
+  <h2>发光球 Orb：不是一个圆，是物理 + 粒子 + 辉光</h2>
+
+  <p>新版 Siri 的形象是个<strong>发光球（Orb）</strong>。它看着简单，其实是几层叠出来的（框架 <code>SiriUI</code>，符号 <code>SiriOrb</code>）：</p>
+  <div class="terms">
+    <div class="row"><div class="t">OrbGlowView</div><div class="d">辉光层——那圈柔光、晕染就是它。</div></div>
+    <div class="row"><div class="t">OrbParticleConfig</div><div class="d">粒子层——球不是死的，里面有粒子在流动 / 翻涌。</div></div>
+    <div class="row"><div class="t">SiriOrbPhysicsInternal</div><div class="d"><strong>物理驱动</strong>——不是放预制动画，是按物理实时算形变 / 回弹，所以动得「有生命感」。</div></div>
+    <div class="row"><div class="t">SiriOrbRegular / Small</div><div class="d">尺寸态——常规态、缩小态（如收到岛上 / 角落）之间会形变过渡。</div></div>
+  </div>
+  <p>它会<strong>随你说话起伏</strong>（符号里有 <code>amplitude</code> 音量、<code>deformation</code> 形变）：你声音大它涨、停顿它缩，像在「听」。这种「活」的感觉，来自<strong>物理 + 音频驱动</strong>，不是循环播放一段视频。</p>
+
+  <blockquote>
+    <p>这和你逆向过的那套 GLSL（<code>siri-shader-reverse</code> 里的声波 / 流体光球）其实是<strong>同一个东西的两面</strong>：苹果端上是 Orb 的 glow + particle + 物理，你在 shader 里复刻的是它的色散辉光与 metaball 融合。<strong>视觉语言一致。</strong></p>
+  </blockquote>
+
+  <hr>
+
+  <p class="act-label">二 · 状态</p>
+  <h2>聆听 / 思考 / 说话：一台状态机</h2>
+
+  <p>Orb 不是一直一个样——它跟着 Siri 的<strong>状态</strong>变（符号 <code>SiriState</code> / <code>SiriStateChange</code>）。每个态有自己的动法，态之间是平滑过渡：</p>
+
+  <div class="states">
+    <div class="st"><div class="sn">唤醒</div><div class="sl">球涌现<br><code>InvocationAnimation</code></div></div>
+    <div class="st-arrow">→</div>
+    <div class="st"><div class="sn">聆听</div><div class="sl">随音量起伏<br><code>ListeningAnimation</code></div></div>
+    <div class="st-arrow">→</div>
+    <div class="st"><div class="sn">思考</div><div class="sl">翻涌 / 自转</div></div>
+    <div class="st-arrow">→</div>
+    <div class="st"><div class="sn">说话</div><div class="sl">随语音节奏动</div></div>
+  </div>
+
+  <p>外加 <code>idle</code>（待机）、<code>dictation</code>（听写）等态。<strong>「它现在是在听、在想、还是在说」，你一眼就能从球的动态读出来</strong>——这是状态机给的，每个态视觉上可区分。</p>
+
+  <hr>
+
+  <p class="act-label">三 · 形变</p>
+  <h2>球 → 面板：一次连续形变</h2>
+
+  <p>Siri 要给你看卡片 / 文字时，那个球<strong>不是消失再弹出面板，而是「长」成面板</strong>——符号 <code>SiriGlowToPlatter</code>（发光球 → platter 承板）。球摊开、化成回答的底，是一次<strong>连续形变</strong>，没有生硬的切换。</p>
+  <p>这跟生成式 UI 那套是接续的：<strong>球形变成面板 → 面板里的内容再逐字 / 逐块流式浮现</strong>。从「一个球」到「一张卡」，整条是连贯的一镜到底。</p>
+
+  <hr>
+
+  <p class="act-label">四 · 视觉底子</p>
+  <h2>色差与焦散：那层「高级感」从哪来</h2>
+
+  <p>Orb 和液态玻璃看着「高级」，靠的是几个刻意加的视觉效果（不是凑巧）：</p>
+  <div class="terms">
+    <div class="row"><div class="t">ChromaticAberration</div><div class="d"><strong>色差 / 色散</strong>——边缘那层彩色折光。符号里有专门的 filter / kernel / 校正曲线，说明是<strong>当成风格主动加的</strong>，不是镜头缺陷。</div></div>
+    <div class="row"><div class="t">caustics</div><div class="d"><strong>焦散</strong>——光透过 / 反射形成的亮纹，液态质感的来源。</div></div>
+    <div class="row"><div class="t">JiggleAnimation</div><div class="d"><strong>Jiggle 抖动</strong>——元素轻微回弹 / 抖一下的反馈（带时长 / 数据），让交互有弹性。</div></div>
+  </div>
+  <p>这套色散 + 液态，正是你在 <code>liquid-glass.html</code> 里复刻的那套——苹果在 Orb、Liquid Glass 上用的是<strong>同一组视觉原语</strong>。</p>
+
+  <hr>
+
+  <p class="act-label">五 · 发送</p>
+  <h2>发送 / 附件飞入：连「飞过输入框那一刻」都管</h2>
+
+  <p>你发消息 / 发附件时，气泡飞入、附件飞向目标，也有专门的动画控制器 <code>SendAnimation</code>（区分 <code>AttachmentKind</code> 卡片 / 媒体、有 <code>Backdrop</code> 背景层）。它精细到<strong>编排「附件飞过输入框的那一刻」</strong>——这种没人会注意、但少了就觉得「廉价」的细节。</p>
+
+  <hr>
+
+  <p class="act-label">附</p>
+  <h2>一个历史注脚：全屏边缘光 <span class="old-tag">iOS 18 旧版</span></h2>
+  <p>上一代（iOS 18）的 Siri 唤醒，是<strong>屏幕四周亮一圈彩色光</strong>（符号 <code>edgeGlowBlur</code> / <code>edgeGlowOpacity</code> / <code>ScreenEdge</code>）。<strong>新版已经换成了 Orb 发光球</strong>，边缘光是历史形态——这里记一笔，免得和现态混。</p>
+
+  <hr>
+
+  <p class="ask">Siri 的动画不是「一个会动的图标」，是一套连贯系统：球涌现 → 随你说话起伏 → 形变成面板 → 内容流式浮现。</p>
+  <p>每一段都有专门的物理、状态、视觉机制在背后——动得自然，是算出来的，不是放视频。</p>
+
+  <div class="foot">
+    数据来源 · SiriUI · SiriUICore · CampoUI（iOS 27 / macOS 26）<br>
+    关键符号 · SiriOrb · OrbGlowView · OrbParticleConfig · SiriOrbPhysicsInternal · SiriState · InvocationAnimation · ListeningAnimation · SiriGlowToPlatter · ChromaticAberration · caustics · JiggleAnimation · SendAnimation · edgeGlow(iOS18)<br>
+    方法 · 系统 dyld shared cache 导出符号 + swift demangle · 仅供研究学习
+  </div>
+
+</article>
+</body>
+</html>
